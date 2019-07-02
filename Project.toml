@@ -1,13 +1,19 @@
 name = "QMMM2"
 uuid = "c97f16bc-9c75-11e9-245c-d50394597caf"
-authors = ["Christoph Ortner <c.ortner@warwick.ac.uk>"]
 version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NeighbourLists = "2fcf5ba9-9ed4-57cf-b73f-ff513e316b9c"
+SHIPs = "07029e18-8f70-11e9-35ce-2d4df590abdc"
+SKTB = "9c0324d0-6785-59b7-97dc-0c015a243b66"
 
 [compat]
 julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 
 [targets]
 test = ["Test"]
