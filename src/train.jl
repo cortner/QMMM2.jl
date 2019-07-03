@@ -9,44 +9,9 @@ using SHIPs: SHIPBasis, eval_basis, eval_basis_d
 using LinearAlgebra: qr, norm, cond
 using LowRankApprox: pqrfact
 
-function _get_neigs(at::Atoms, i0::Integer, rcut)
-   nlist = neighbourlist(at, rcut)
-   j, r, R = neigs(nlist, i0)
-   return R, j
-end
+_hcat(X::AbstractVector) = hcat(X...)
 
-
-function _site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
-   Rs, _ = _get_neigs(at, i0, cutoff(basis))
-   return eval_basis(basis, Rs)
-end
-
-
-function _site_energy_d(basis::SHIPBasis, at::Atoms, i0::Integer)
-   Rs, Ineigs = _get_neigs(at, i0, cutoff(basis))
-   dEs = zeros(JVecF, length(at), length(basis))
-   _, dB = eval_basis_d(basis, Rs)
-   @assert dB isa Matrix{JVecF}
-   @assert size(dB) == (length(Rs), length(basis))
-   for iB = 1:length(basis), n = 1:length(Ineigs)
-      dEs[Ineigs[n], iB] = dB[n, iB]
-   end
-   return dEs
-end
-
-_site_energy(coll::IPCollection, at::Atoms, i0::Integer) =
-   [ site_energy(V, at, i0) for V in coll.coll ]
-
-_site_energy_d(coll::IPCollection, at::Atoms, i0::Integer) =
-   vcat([ site_energy_d(V, at, i0) for V in coll.coll ]...)
-
-
-_site_energy(superB::IPSuperBasis, at::Atoms, i0::Integer) =
-   vcat([ _site_energy(B, at, i0) for B in superB.BB]...)
-
-_site_energy_d(superB::IPSuperBasis, at::Atoms, i0::Integer) =
-   hcat([ _site_energy_d(B, at, i0) for B in superB.BB]...)
-
+_site_energy_d(args...) = hcat( site_energy_d(args...)... )
 
 """
 l0 : site at which the site energy is evaluated
@@ -82,6 +47,7 @@ function assemble_lsq(::Val{:dEs}, basis, config, at, h, weights)
    end
    # assemble A - lsq matrix
    dB = _site_energy_d(basis, at, l0)
+   @assert size(dB) == (length(at), length(basis))
    A = zeros(3*length(at), length(basis))
    for iB = 1:length(basis)
       for i = 1:length(at)
@@ -109,6 +75,7 @@ function assemble_lsq(::Val{:d2Es}, basis, config, at, h, weights)
    end
    # assemble A - lsq matrix
    d2B = _site_energy_d2fd(basis, at, l0, l, i, h)
+   @assert size(d2B) == (length(at), length(basis))
    A = zeros(3*length(nn), length(basis))
    for iB = 1:length(basis)
       for in = 1:length(nn)
@@ -128,7 +95,7 @@ end
 function assemble_lsq(::Val{:Es}, basis, config, at, h, weights)
    w = weights["Es"]
    Y = [ w * config["Es"] ]
-   A = Matrix( w * _site_energy(basis, at, 1)' )
+   A = Matrix( w * site_energy(basis, at, 1)' )
    @assert Y isa Vector
    @assert A isa Matrix
    @assert size(Y) == (1,)
