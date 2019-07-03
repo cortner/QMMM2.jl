@@ -1,10 +1,13 @@
 
 using NeighbourLists
 using JuLIP: Atoms, cutoff, neighbourlist, JVecF, positions, set_positions!
+using JuLIP.MLIPs: IPCollection, IPSuperBasis
+using JuLIP.Potentials: site_energy, site_energy_d
 import JuLIP
 import SHIPs
 using SHIPs: SHIPBasis, eval_basis, eval_basis_d
 using LinearAlgebra: qr, norm, cond
+using LowRankApprox: pqrfact
 
 function _get_neigs(at::Atoms, i0::Integer, rcut)
    nlist = neighbourlist(at, rcut)
@@ -12,10 +15,12 @@ function _get_neigs(at::Atoms, i0::Integer, rcut)
    return R, j
 end
 
+
 function _site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
    Rs, _ = _get_neigs(at, i0, cutoff(basis))
    return eval_basis(basis, Rs)
 end
+
 
 function _site_energy_d(basis::SHIPBasis, at::Atoms, i0::Integer)
    Rs, Ineigs = _get_neigs(at, i0, cutoff(basis))
@@ -29,13 +34,27 @@ function _site_energy_d(basis::SHIPBasis, at::Atoms, i0::Integer)
    return dEs
 end
 
+_site_energy(coll::IPCollection, at::Atoms, i0::Integer) =
+   [ site_energy(V, at, i0) for V in coll.coll ]
+
+_site_energy_d(coll::IPCollection, at::Atoms, i0::Integer) =
+   vcat([ site_energy_d(V, at, i0) for V in coll.coll ]...)
+
+
+_site_energy(superB::IPSuperBasis, at::Atoms, i0::Integer) =
+   vcat([ _site_energy(B, at, i0) for B in superB.BB]...)
+
+_site_energy_d(superB::IPSuperBasis, at::Atoms, i0::Integer) =
+   hcat([ _site_energy_d(B, at, i0) for B in superB.BB]...)
+
+
 """
 l0 : site at which the site energy is evaluated
  l : site that we are perturbing
  i : direction of the perturbation (E1, E2, E3)
  h : finite-difference step
 """
-function _site_energy_d2fd(basis::SHIPBasis, at::Atoms,
+function _site_energy_d2fd(basis, at::Atoms,
                            l0::Integer, l::Integer, i::Integer, h::Real)
    X = positions(at)
    X[l0] += h * evec(i)
@@ -72,6 +91,7 @@ function assemble_lsq(::Val{:dEs}, basis, config, at, h, weights)
    end
    return A, Y
 end
+
 
 function assemble_lsq(::Val{:d2Es}, basis, config, at, h, weights)
    w = weights["d2Es"]
@@ -173,11 +193,13 @@ function assemble_lsq(basis, D::Dict, weights::Dict)
 end
 
 
-function lsqfit(basis, D::Dict, weights::Dict)
+function lsqfit(basis, D::Dict, weights::Dict; verbose=true, kwargs...)
    A, Y = assemble_lsq(basis, D, weights)
-   qrA = qr(A)
-   @show cond(A)
+   qrA = pqrfact(A; rtol=1e-5, kwargs...)
+   condA = cond(Matrix(qrA[:R]))
+   verbose && @show condA
    c = qrA \ Y
-   @show norm(A * c - Y) / norm(Y)
+   verbose && @show norm(c), norm(c, Inf)
+   verbose && @show norm(A * c - Y) / norm(Y)
    return JuLIP.MLIPs.combine(basis, c)
 end
