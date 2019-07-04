@@ -3,32 +3,36 @@ using JuLIP, QMMM2, SHIPs
 using JuLIP.MLIPs
 using NeighbourLists, LinearAlgebra
 
-fname = @__DIR__() * "/C_test_data.json"
+# fname = @__DIR__() * "/C_test_data.json"
+fname = "/Users/ortner/Dropbox/Work/Projects/SiteEFitting/data/C_Dim3.json"
 D = load_json(fname)
+sym = :C  # => can get this from atoms object
 
-# fix the database
-at = Atoms(D["at"])
-h = D["h"]
-data = D["data"]
-dat1 = Dict( "Es" => data[1]["Es"] )
-dat2 = Dict( "dEs" => data[1]["dEs"] )
-D["data"] = [ [dat1, dat2]; data[2:end] ]
-
-trans = PolyTransform(2, rnn(:C))
+trans = PolyTransform(2, rnn(sym))
 basis = IPSuperBasis(OneBody(1.0),
-                     SHIPBasis(3, 18, 1.5, trans, 2, 0.7*rnn(:C), 5.0) )
+                     SHIPBasis(3, 15, 1.5, trans, 2, 0.7*rnn(:C), 5.0) )
 length(basis)
-weights = Dict("Es" => 100.0, "dEs" => 10.0, "d2Es" => 1.0)
+# weights = Dict("Es" => 100.0, "dEs" => 10.0, "d2Es" => 1.0, "d3Es" => 0.1)
+weights = Dict("Es" => 0.1, "dEs" => 0.1, "d2Esh" => 10.0, "d3Esh" => 0.0)
+
+##
 
 🚢, fitinfo = QMMM2.lsqfit(basis, D, weights; rtol=1e-6)
 
 QMMM2.print_errors(fitinfo)
 
+dat = D["data"][3]
+d2Esh = hcat(dat["d2Esh"]...)
+at = Atoms(D["at"])
+fit = QMMM2._site_energy_d2h(🚢, at, 1, dat["l"], dat["i"], dat["h"])
+Ilge = findall( sqrt.(sum(abs2, d2Esh - fit; dims=1))[:] .> 0.15 )
 
-# dat1["Es"] - site_energy(🚢, at, 1)
-# errdEs = dat2["dEs"] - site_energy_d(🚢, at, 1)
-# maximum(norm.(errdEs, Inf))
-#
-# atu = bulk(:C) * 3
-# energy(🚢, atu) / length(atu)
-# site_energy(🚢, atu, 1)
+display([d2Esh; fit][:, Ilge])
+
+🚢
+
+positions(at)[Ilge] |> mat
+dat
+
+
+norm(d2Esh - fit, Inf)

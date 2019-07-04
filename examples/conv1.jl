@@ -15,7 +15,7 @@ dat2 = Dict( "dEs" => data[1]["dEs"] )
 D["data"] = [ [dat1, dat2]; data[2:end] ]
 
 trans = PolyTransform(2, rnn(:C))
-weights = Dict("Es" => 100.0, "dEs" => 10.0, "d2Es" => 1.0)
+weights = Dict("Es" => 100.0, "dEs" => 10.0, "d2Esh" => 1.0)
 
 err0 = Float64[]
 err1 = Float64[]
