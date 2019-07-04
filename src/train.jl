@@ -15,12 +15,12 @@ _hcat(X::AbstractVector) = hcat(X...)
 _site_energy_d(args...) = hcat( site_energy_d(args...)... )
 
 """
-l0 : site at which the site energy is evaluated
- l : site that we are perturbing
+l0 : site that we are perturbing
+ l : site at which the site energy is evaluated
  i : direction of the perturbation (E1, E2, E3)
  h : finite-difference step
 """
-function _site_energy_d2fd(basis, at::Atoms,
+function _site_energy_d2h(basis, at::Atoms,
                            l0::Integer, l::Integer, i::Integer, h::Real)
    X = positions(at)
    X[l0] += h * evec(i)
@@ -34,99 +34,123 @@ function _site_energy_d2fd(basis, at::Atoms,
    return (dBp - dBm) / (2*h)
 end
 
+"""
+l0    : first site that we are perturbing
+ l    : site at which the site energy is evaluated
+ k    : second site that we are perturbin
+ i_l0 : direction of the perturbation of l0
+ i_k  : direction of the perturbation of k
+ h    : finite-difference step
+"""
+function _site_energy_d3h(basis, at::Atoms,
+                           l0::Integer, l::Integer, k::Integer,
+                           i_l0::Integer, i_k::Integer, h::Real)
+   X = positions(at)
+   # -------------------------
+   X[l0] += h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   set_positions!(at, X)
+   dBpp = _site_energy_d(basis, at, l)
+   X[l0] -= h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   # -------------------------
+   X[l0] += h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   set_positions!(at, X)
+   dBpm = _site_energy_d(basis, at, l)
+   X[l0] -= h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   # -------------------------
+   X[l0] -= h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   set_positions!(at, X)
+   dBmp = _site_energy_d(basis, at, l)
+   X[l0] += h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   # -------------------------
+   X[l0] -= h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   set_positions!(at, X)
+   dBmm = _site_energy_d(basis, at, l)
+   X[l0] += h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   # -------------------------
+   set_positions!(at, X)
+   return (dBpp - dBpm - dBmp + dBmm) / (2*h)^2
+end
 
-function assemble_lsq(::Val{:dEs}, basis, config, at, h, weights)
+
+function _asm_(djEs, djB, w, nn)
+   Y = zeros(length(nn) * 3)
+   A = zeros(3*length(nn), size(djB, 2))
+   for in = 1:length(nn)
+      rows = 3*(in-1) .+ (1:3)
+      Y[3*(in-1) .+ (1:3)] .= w * djEs[in]
+      for iB = 1:size(djB, 2)
+         A[rows, iB] .= w * djB[in, iB]
+      end
+   end
+   return A, Y
+end
+
+function assemble_lsq(::Val{:dEs}, basis, config, at, w)
    # import data
-   w = weights["dEs"]
    dEs = config["dEs"]
    l0 = 1
    @assert length(dEs) == length(at)
-   # assemble Y
-   Y = zeros(length(at) * 3)
-   for i = 1:length(at)
-      Y[3*(i-1) .+ (1:3)] .= w * dEs[i]
-   end
-   # assemble A - lsq matrix
+   # assemble basis
    dB = _site_energy_d(basis, at, l0)
    @assert size(dB) == (length(at), length(basis))
-   A = zeros(3*length(at), length(basis))
-   for iB = 1:length(basis)
-      for i = 1:length(at)
-         rows = 3*(i-1) .+ (1:3)
-         A[rows, iB] .= w * dB[i, iB]   # dB[iB] = dEs for ith basis function
-      end
-   end
-   return A, Y
+   # -------
+   return _asm_(dEs, dB, w, 1:length(at))
 end
 
 
-function assemble_lsq(::Val{:d2Esh}, basis, config, at, h, weights)
-   w = weights["d2Es"]
+function assemble_lsq(::Val{:d2Esh}, basis, config, at, w)
    # import data
    d2Es = config["d2Esh"]
-   nn = config["n"]   # indices of stored derivatives
-   l = config["ℓ"]    # the atom where we evaluate the site energy deriv
+   l = config["l"]    # the atom where we evaluate the site energy deriv
    i = config["i"]    # the direction of the perturbation of l0 = 1
+   h = config["h"]
    l0 = 1
-   @assert length(d2Es) == length(nn) <= length(at)
-   # assemble Y
-   Y = zeros(length(nn) * 3)
-   for in = 1:length(nn)
-      Y[3*(in-1) .+ (1:3)] .= w * d2Es[in]
-   end
-   # assemble A - lsq matrix
-   d2B = _site_energy_d2fd(basis, at, l0, l, i, h)
+   @assert length(d2Es) == length(at)
+   # assemble basis
+   d2B = _site_energy_d2h(basis, at, l0, l, i, h)
    @assert size(d2B) == (length(at), length(basis))
-   A = zeros(3*length(nn), length(basis))
-   for iB = 1:length(basis)
-      for in = 1:length(nn)
-         rows = 3*(in-1) .+ (1:3)
-         A[rows, iB] .= w * d2B[in, iB]
-      end
-   end
-   return A, Y
+   return _asm_(d2Es, d2B, w, 1:length(at))
 end
 
 
-function assemble_lsq(::Val{:d3Esh}, basis, config, at, h, weights)
-   return Matrix{Float64}(undef, 0, 0), Vector{Float64}(undef, 0)
+function assemble_lsq(::Val{:d3Esh}, basis, config, at, w)
+   # import data
+   d3Es = config["d3Esh"]
+   h = config["h"]
+   l = config["l"]    # the atom where we evaluate the site energy deriv
+   l0 = 1              # first perturbed atom
+   i_l0 = config["i"]    # the direction of the perturbation of l0 = 1
+   k = config["k"]       # second perturbed atom
+   i_k = config["j"]     # direction of perturbation of k
+   @assert length(d3Es) == length(at)
+   # assemble basis
+   d3B = _site_energy_d3h(basis, at, l0, l, k, i_l0, i_k, h)
+   @assert size(d3B) == (length(at), length(basis))
+   # ----------------
+   return _asm_(d3Es, d3B, w, 1:length(at))
 end
 
 
-function assemble_lsq(::Val{:Es}, basis, config, at, h, weights)
-   w = weights["Es"]
+function assemble_lsq(::Val{:Es}, basis, config, at, w)
    Y = [ w * config["Es"] ]
    A = Matrix( w * site_energy(basis, at, 1)' )
-   @assert Y isa Vector
-   @assert A isa Matrix
    @assert size(Y) == (1,)
    @assert size(A) == (1, length(basis))
    return A, Y
 end
 
 
-function get_datatype(dat::Dict)
-   for k in keys(dat)
-      if k == "Es"
-         return "Es"
-      elseif k == "dEs"
-         return "dEs"
-      elseif k in ["d2Es", "d2Esh"]
-         return "d2Esh"
-      elseif k in ["d3Es", "d3Esh"]
-         return "d3Esh"
-      end
-   end
-   @warn("unknown key: ")
-   @show keys(dat)
-   return nothing
-end
-
-
 function assemble_lsq(basis, D::Dict, weights::Dict)
 
    at = Atoms(D["at"])::Atoms
-   h = D["h"]::Real
    data = D["data"]
 
    # --------------- assemble local matrices  ---------------
@@ -135,9 +159,13 @@ function assemble_lsq(basis, D::Dict, weights::Dict)
    DTs = String[]
    nrows = 0
    for dat in data
-      # get the local lsq system
-      dt = get_datatype(dat)
-      A, Y = assemble_lsq(Val(Symbol(dt)), basis, dat, at, h, weights)
+      # get some info about the local lsq system
+      dt = dat["datatype"]
+      if !haskey(weights, dt); continue; end
+      w = weights[dt]
+      if w == 0.0; continue; end
+      # assemble the local lsq system
+      A, Y = assemble_lsq(Val(Symbol(dt)), basis, dat, at, w)
       # store it in the AA, YY arrays
       if length(Y) != 0
          @assert size(A, 2) == length(basis)
