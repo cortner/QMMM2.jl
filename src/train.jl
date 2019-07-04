@@ -8,6 +8,7 @@ import SHIPs
 using SHIPs: SHIPBasis, eval_basis, eval_basis_d
 using LinearAlgebra: qr, norm, cond
 using LowRankApprox: pqrfact
+using PrettyTables: pretty_table, ft_printf
 
 _hcat(X::AbstractVector) = hcat(X...)
 
@@ -59,7 +60,7 @@ function assemble_lsq(::Val{:dEs}, basis, config, at, h, weights)
 end
 
 
-function assemble_lsq(::Val{:d2Es}, basis, config, at, h, weights)
+function assemble_lsq(::Val{:d2Esh}, basis, config, at, h, weights)
    w = weights["d2Es"]
    # import data
    d2Es = config["d2Esh"]
@@ -87,7 +88,7 @@ function assemble_lsq(::Val{:d2Es}, basis, config, at, h, weights)
 end
 
 
-function assemble_lsq(::Val{:d3Es}, basis, config, at, h, weights)
+function assemble_lsq(::Val{:d3Esh}, basis, config, at, h, weights)
    return Matrix{Float64}(undef, 0, 0), Vector{Float64}(undef, 0)
 end
 
@@ -107,13 +108,13 @@ end
 function get_datatype(dat::Dict)
    for k in keys(dat)
       if k == "Es"
-         return Val{:Es}()
+         return "Es"
       elseif k == "dEs"
-         return Val{:dEs}()
+         return "dEs"
       elseif k in ["d2Es", "d2Esh"]
-         return Val{:d2Es}()
+         return "d2Esh"
       elseif k in ["d3Es", "d3Esh"]
-         return Val{:d3Es}()
+         return "d3Esh"
       end
    end
    @warn("unknown key: ")
@@ -131,16 +132,19 @@ function assemble_lsq(basis, D::Dict, weights::Dict)
    # --------------- assemble local matrices  ---------------
    AA = Matrix{Float64}[]
    YY = Vector{Float64}[]
+   DTs = String[]
    nrows = 0
    for dat in data
       # get the local lsq system
-      A, Y = assemble_lsq(get_datatype(dat), basis, dat, at, h, weights)
+      dt = get_datatype(dat)
+      A, Y = assemble_lsq(Val(Symbol(dt)), basis, dat, at, h, weights)
       # store it in the AA, YY arrays
       if length(Y) != 0
          @assert size(A, 2) == length(basis)
          @assert size(A, 1) == length(Y)
          push!(AA, A)
          push!(YY, Y)
+         push!(DTs, dt)   # remember the data-types to assemble the errors!
          nrows += length(Y)
       end
    end
@@ -148,25 +152,71 @@ function assemble_lsq(basis, D::Dict, weights::Dict)
    # --------------- assemble global matrix  ---------------
    A = zeros(nrows, length(basis))
    Y = zeros(nrows)
+   DT = Vector{String}(undef, nrows)
    irow = 0
-   for (a, y) in zip(AA, YY)
+   for (a, y, dt) in zip(AA, YY, DTs)
       rows = irow .+ (1:size(a,1))
       A[rows, :] .= a
       Y[rows] .= y
+      DT[rows] .= dt
       irow += length(rows)
    end
 
-   return A, Y
+   return A, Y, DT
 end
 
 
+
 function lsqfit(basis, D::Dict, weights::Dict; verbose=true, kwargs...)
-   A, Y = assemble_lsq(basis, D, weights)
+   A, Y, DT = assemble_lsq(basis, D, weights)
    qrA = pqrfact(A; rtol=1e-5, kwargs...)
    condA = cond(Matrix(qrA[:R]))
    verbose && @show condA
    c = qrA \ Y
    verbose && @show norm(c), norm(c, Inf)
    verbose && @show norm(A * c - Y) / norm(Y)
-   return JuLIP.MLIPs.combine(basis, c)
+   return JuLIP.MLIPs.combine(basis, c),
+          _fitinfo(basis, D, weights, kwargs, A, Y, DT, c)
+end
+
+
+
+function _fitinfo(basis, D, weights, kwargs, A, Y, DT, c)
+   D = Dict("basis" => Dict(basis),
+            "weights" => weights,
+            "kwargs" => Dict(kwargs...),
+            "rmse" => Dict{String, Any}(),
+            "maxe" => Dict{String, Any}()  )
+   errs = A * c - Y
+   for dt in unique(DT)
+      Idt = findall(DT .== dt)
+      D["rmse"][dt] = norm(errs[Idt]) / norm(Y[Idt])
+      D["maxe"][dt] = norm(errs[Idt], Inf) / norm(Y[Idt], Inf)
+   end
+   return D
+end
+
+
+
+function print_errors(fitinfo::Dict; fmt="%.3e")
+   dts = ["Es", "dEs", "d2Esh", "d3Esh"]
+   maxe = zeros(length(dts))
+   rmse = zeros(length(dts))
+   for (i, dt) in enumerate(dts)
+      if haskey(fitinfo["maxe"], dt)
+         maxe[i] = fitinfo["maxe"][dt]
+      else
+         maxe[i] = NaN
+      end
+      if haskey(fitinfo["rmse"], dt)
+         rmse[i] = fitinfo["rmse"][dt]
+      else
+         rmse[i] = NaN
+      end
+   end
+   fltfmt = ft_printf(fmt)[0]
+   pretty_table( [dts maxe rmse], ["datatype", "maxe", "rmse"],
+                 formatter = Dict(1 => (v,i) -> v,
+                                  2 => fltfmt,
+                                  3 => fltfmt) )
 end
