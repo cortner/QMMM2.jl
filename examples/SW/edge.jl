@@ -39,97 +39,13 @@ err2, errinf = QMMM2.Solve.errors(atmax, AT, Iinmax, UU, Umax)
 Eerr = abs.(EE .- Emax)
 
 ##
-plot(RDOM, Eerr;
-     xaxis = (:log, "R [Å]"),
-     yaxis = (:log, "|E - E(R)| [eV]"),
-     m=:o,  ms=5, lw=2, label = "|E-E[R]|",  )
-plot!(RDOM[2:4], 200*RDOM[2:4].^(-3), c=:black, lw=2, ls=:dot, label = "R^-3")
-
-
-
-##
-Rmax = 60.0 * r0
-atmax, _ = edge_config(Rmax)
-set_calculator!(atmax, sw_eq)
-f = norm.(forces(atmax))
-xc = atmax["xcore"]
-r = [ norm(x[1:2] - xc[1:2]) for x in positions(atmax) ]
-scatter(r, f, xaxis = (:log,), yaxis = (:log,))
-plot!([10.0, 100.0], 300*[10.0, 100.0].^(-3), lw=2, ls=:dash, c=:red)
-
-X0 = positions(atmax)
-minimise!(atmax; verbose=2, precond=FF(atmax))
-U = positions(atmax) - X0
-ee = strains(U, atmax)
-scatter(r, ee.+1e-4, xaxis = (:log,), yaxis = (:log,))
-plot!([10.0, 100.0], 10*[10.0, 100.0].^(-2), lw=2, ls=:dash, c=:red)
-
-##
-x, y, _ = xyz(atmax)
-Ifree =  ceil.(Int, atmax.dofmgr.xfree / 3)
-Iclamp = setdiff(1:length(atmax), Ifree)
-scatter(x, y)
-scatter(x[Ifree], y[Ifree])
-scatter!(x[Iclamp], y[Iclamp])
-
-
-
-
-# ##
-#
-# at, Ifree = edge_config(5 * r0)
-# x, y, _ = xyz(at)
-# Iclamp = setdiff(1:length(at), Ifree)
-# scatter(x[Ifree], y[Ifree], lw=0, m=:o, ms=5, c = 1)
-# scatter!(x[Iclamp], y[Iclamp], lw=0, m=:o, ms=5, c = 2)
-#
-# ##
-# set_calculator!(at, sw_eq)
-# minimise!(at, verbose=2, precond = FF(at, sw_eq))
-# x, y, _ = xyz(at)
-# scatter(x[Ifree], y[Ifree], lw=0, m=:o, ms=5, c = 1)
-# scatter!(x[Iclamp], y[Iclamp], lw=0, m=:o, ms=5, c = 2)
-#
-# ##
-#
-# # H = hessian(at)
-# # x = dofs(at)
-# # g = gradient(at)
-# # @show norm(g, Inf)
-# # x -= H \ g
-# # g = gradient(at, x)
-# # @show norm(g, Inf)
-# # x -= H \ g
-# # g = gradient(at, x)
-# # @show norm(g, Inf)
-#
-# ##
-# n = 3
-# at = AT[n]
-# x, y, _ = xyz(at)
-# Ifree =  unique(ceil.(Int, at.dofmgr.xfree / 3))
-# Iclamp = setdiff(1:length(at), Ifree)
-# scatter(x[Ifree], y[Ifree], m=:o, ms=5, c = 1)
-# scatter!(x[Iclamp], y[Iclamp], m=:o, ms=5, c = 2)
-#
-#
-#
-# length(at) == length(AT[1])
-# sort(at.X) ≈ sort(AT[1].X)
-# X1 = sort(positions(at))
-# X2 = sort(positions(AT[1]))
-# X1 = [x - X1[1] for x in X1]
-# X2 = [x - X2[1] for x in X2]
-# mat(X1)
-# mat(X2)
-# cell(at)
-#
-#
-#
-#
-# cell(AT[1])
-#
-#
-#
-#
-# cell(atmax)
+plot(; xaxis = (:log, "domain radius [Å]"),
+       yaxis = (:log, "errors"),
+       title = "Domain Test, Si, SW",
+       legend = :bottomleft )
+plot!( RDOM, err2,   c=1, lw=3, m=:o, ms=8, label =  "energy-norm" )
+plot!( RDOM, errinf, c=2, lw=3, m=:o, ms=8, label =  "max-norm (strains)" )
+plot!( RDOM, Eerr,   c=3, lw=3, m=:o, ms=8, label =  "energy-diff. [eV]" )
+t = RDOM[3:5]
+plot!(t, 3*t.^(-1),  c=:black, lw=2, ls=:dot, label = "R^-1, R^-2")
+plot!(t, 12*t.^(-2), c=:black, lw=2, ls=:dot, label = "")
