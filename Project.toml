@@ -4,6 +4,7 @@ version = "0.1.0"
 
 [deps]
 JuLIP = "945c410c-986d-556a-acb1-167a618e0462"
+JuLIPMaterials = "37d5470d-be39-5372-83c6-3e18ddf26f4a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LowRankApprox = "898213cb-b102-5a47-900c-97e73b919f73"
 NeighbourLists = "2fcf5ba9-9ed4-57cf-b73f-ff513e316b9c"

@@ -93,9 +93,9 @@ function _asm_(djEs, djB, w, nn)
    return A, Y
 end
 
-function assemble_lsq(::Val{:dEs}, basis, config, at, w)
+function assemble_lsq(::Val{:dEs}, basis, config, at, w, key)
    # import data
-   dEs = config["dEs"]
+   dEs = config[key]
    l0 = 1
    @assert length(dEs) == length(at)
    # assemble basis
@@ -106,9 +106,9 @@ function assemble_lsq(::Val{:dEs}, basis, config, at, w)
 end
 
 
-function assemble_lsq(::Val{:d2Esh}, basis, config, at, w)
+function assemble_lsq(::Val{:d2Esh}, basis, config, at, w, key)
    # import data
-   d2Es = config["d2Esh"]
+   d2Es = config[key]
    l = config["l"]    # the atom where we evaluate the site energy deriv
    i = config["i"]    # the direction of the perturbation of l0 = 1
    h = config["h"]
@@ -121,9 +121,9 @@ function assemble_lsq(::Val{:d2Esh}, basis, config, at, w)
 end
 
 
-function assemble_lsq(::Val{:d3Esh}, basis, config, at, w)
+function assemble_lsq(::Val{:d3Esh}, basis, config, at, w, key)
    # import data
-   d3Es = config["d3Esh"]
+   d3Es = config[key]
    h = config["h"]
    l = config["l"]    # the atom where we evaluate the site energy deriv
    l0 = 1              # first perturbed atom
@@ -139,8 +139,8 @@ function assemble_lsq(::Val{:d3Esh}, basis, config, at, w)
 end
 
 
-function assemble_lsq(::Val{:Es}, basis, config, at, w)
-   Y = [ w * config["Es"] ]
+function assemble_lsq(::Val{:Es}, basis, config, at, w, key)
+   Y = [ w * config[key] ]
    A = Matrix( w * site_energy(basis, at, 1)' )
    @assert size(Y) == (1,)
    @assert size(A) == (1, length(basis))
@@ -148,7 +148,7 @@ function assemble_lsq(::Val{:Es}, basis, config, at, w)
 end
 
 
-function assemble_lsq(basis, D::Dict, weights::Dict)
+function assemble_lsq(basis, D::Dict, weights::Dict, key="train")
 
    at = Atoms(D["at"])::Atoms
    data = D["data"]
@@ -165,7 +165,7 @@ function assemble_lsq(basis, D::Dict, weights::Dict)
       w = weights[dt]
       if w == 0.0; continue; end
       # assemble the local lsq system
-      A, Y = assemble_lsq(Val(Symbol(dt)), basis, dat, at, w)
+      A, Y = assemble_lsq(Val(Symbol(dt)), basis, dat, at, w, key)
       # store it in the AA, YY arrays
       if length(Y) != 0
          @assert size(A, 2) == length(basis)
@@ -195,8 +195,9 @@ end
 
 
 
-function lsqfit(basis, D::Dict, weights::Dict; verbose=true, kwargs...)
-   A, Y, DT = assemble_lsq(basis, D, weights)
+function lsqfit(basis, D::Dict, weights::Dict;
+                verbose=true, key="train", kwargs...)
+   A, Y, DT = assemble_lsq(basis, D, weights, key)
    qrA = pqrfact(A; rtol=1e-5, kwargs...)
    condA = cond(Matrix(qrA[:R]))
    verbose && @show condA

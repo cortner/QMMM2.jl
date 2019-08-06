@@ -1,7 +1,7 @@
 using StaticArrays
 using JuLIP, JuLIP.Potentials
 using JuLIP.Potentials: site_energy, site_energy_d
-
+using JuLIP: AbstractCalculator
 
 function evec(i)
    if i == 1
@@ -69,7 +69,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     D["data"] = data;
 
     # 0. compute Es on reference
-    println("on reference: calculate Es")
+    # println("on reference: calculate Es")
     l0 = 1;
     ### Es = site_energy(tbm, atd, l0);
     # store Es
@@ -80,7 +80,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     push!(data, dat);
 
     # 1. compute dEs on reference and only store the derivatives
-    println("calculating dEs_", l0)
+    # println("calculating dEs_", l0)
     ### dEs_ref = site_energy_d(tbm, atd, l0) |> mat
     # store dEs
     dat = Dict{String, Any}();
@@ -92,7 +92,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     # 2. compute FD approximations for dE2 and only store the FD within rcut_d2
     #    d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
     index_rcut2_0 = [];
-    for (n, neigs, r, R) in sites(nlist_d2)
+    for (n, neigs, R) in sites(nlist_d2)
         if n == l0
             index_rcut2_0 = neigs;
         end
@@ -102,25 +102,25 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     dEs_pert_0p = zeros(3, N₂, 3, length(atd));
     dEs_pert_0n = zeros(3, N₂, 3, length(atd));
     for i = 1 : 3
-        println("perturb the origin atom in direction ", i, "+h :")
+        # println("perturb the origin atom in direction ", i, "+h :")
         # X[i,l0] += h;
         # atd = deepcopy(at);
         # set_positions!(atd, X);
         for j = 1 : N₂
             ℓ = index_rcut2_0[j];
-            println("calculating dE_", ℓ)
+            # println("calculating dE_", ℓ)
 ###         dEs_pert_0p[i, j, :, :] = site_energy_d(tbm, atd, ℓ) |> mat;
         end
-        println("perturb the origin atom in direction ", i, "-h :")
+        # println("perturb the origin atom in direction ", i, "-h :")
         # X[i,l0] -= 2*h;
         # atd = deepcopy(at);
         # set_positions!(atd, X);
         for j = 1 : N₂
             ℓ = index_rcut2_0[j];
-            println("calculating dE_", ℓ)
+            # println("calculating dE_", ℓ)
 ###         dEs_pert_0n[i, j, :, :] = site_energy_d(tbm, atd, ℓ) |> mat;
         end
-        X[i,l0] += h;
+        # X[i,l0] += h;
         # compute the central finite differences
         for j = 1 : N₂
             ℓ = index_rcut2_0[j];
@@ -149,9 +149,6 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
 
     return D
 end
-
-
-
 
 
 
@@ -203,7 +200,7 @@ function eval_dataset_tb!(valdt::Union{Val{:Es}, Val{:dEs}}, data, calc, at; key
 end
 
 
-function eval_dataset_tb!(::Val{d2Esh}, data, calc, at; key=key)
+function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key=key)
     h = data[1]["h"]
     # TODO: test all h are the same!
     for i = 1:3, sig in [1, -1]

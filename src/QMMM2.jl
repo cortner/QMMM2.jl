@@ -6,4 +6,6 @@ include("train.jl")
 
 include("calculators.jl")
 
+include("solve.jl")
+
 end # module
