@@ -72,10 +72,10 @@ function prepare_qmmm!(at::Atoms, ::Type{EnergyMixing};
    @assert maximum(Iqm) <= length(at)
 
    # create an atoms object for the QM calculator
-   # => TODO
+   # => TODO: add buffer, carve out region, etc...
 
    # store the QM region in `at`
-   set_data!(at, "qmmm_e_Iqm", Iqm)
+   at["qmmm_e_Iqm"] = Iqm
    # store the new calculator
    set_calculator!(at, EnergyMixing(at, Vqm, Vmm))
 

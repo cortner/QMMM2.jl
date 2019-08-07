@@ -8,4 +8,8 @@ include("calculators.jl")
 
 include("solve.jl")
 
+# include("edip.jl")
+
+
+
 end # module

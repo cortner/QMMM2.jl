@@ -3,25 +3,7 @@ using JuLIP, QMMM2, SHIPs, PrettyTables, LinearAlgebra, Plots, JuLIPMaterials
 using JuLIP.MLIPs
 include(@__DIR__() * "/swqmmm.jl")
 
-##
-
-sw_eq = JuLIPMaterials.Si.sw_eq()
-
-function edge_config(Rdom, calc = sw_eq, Rbuf = 2 * cutoff(calc))
-   # -----------------------------------
-   #  construct the configuration
-   at, x0 = JuLIPMaterials.Si.edge110(:Si, Rdom + Rbuf;
-                                      calc=calc, truncate=true, sym=true)
-   set_data!(at, "xcore", x0)
-   # -----------------------------------
-   #  compute the domains
-   X = positions(at)
-   r = [ norm(x[1:2] - x0[1:2]) for x in X ]
-   Ifree = findall(r .<= Rdom)
-   set_free!(at, Ifree)
-   return at, Ifree
-end
-
+sw_eq = SWqmmm.sw_eq
 
 ##
 r0 = rnn(:Si)
@@ -31,8 +13,7 @@ Rmax = 75.0 * r0
 RDOM = [5.0, 8.0, 12.0, 18.0, 26.0] * r0
 RBUF = 2 * cutoff(sw_eq) *  ones(length(RDOM))
 
-atmax, _ = edge_config(Rmax)
-set_calculator!(atmax, sw_eq)
+atmax, _ = SWqmmm.edge_config(Rmax, sw_eq)
 AT, Iinmax, Iinnext = QMMM2.Solve.cluster_sequence(atmax, RDOM, RBUF)
 UU, EE, Umax, Emax  =  QMMM2.Solve.solve_sequence(atmax, AT, Iinmax, Iinnext)
 err2, errinf = QMMM2.Solve.errors(atmax, AT, Iinmax, UU, Umax)
