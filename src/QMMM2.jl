@@ -8,6 +8,8 @@ include("calculators.jl")
 
 include("solve.jl")
 
+include("sketches.jl") 
+
 # include("edip.jl")
 
 
