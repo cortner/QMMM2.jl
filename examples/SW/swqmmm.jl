@@ -28,7 +28,8 @@ function get_basis(bo, deg; rinfact = 0.8, wL = 1.5)
    rin = rinfact * r0
    trans = PolyTransform(2, rnn(:Si))
    fcut = PolyCutoff1s(2, rin, rcut)
-   shipB = SHIPBasis(SparseSHIP(bo, :Si, deg, wL), trans, fcut)
+   spec = SparseSHIP(:Si, bo, deg; wL=wL)
+   shipB = SHIPBasis(spec, trans, fcut)
    basis = IPSuperBasis(OneBody(1.0), shipB)
 end
 
