@@ -1,20 +1,12 @@
 # create the Dict for datas, but without any calculations
 function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
 
-    # X  = positions(at) |> mat;
     atd = deepcopy(at);
     # neighbour lists for different cutoffs
     rcut1, rcut2, rcut3 = cutoffs[:];
     nlist_d1 = neighbourlist(at, rcut1);
     nlist_d2 = neighbourlist(at, rcut2);
     nlist_d3 = neighbourlist(at, rcut3);
-
-    # calculators
-    # eF = 10.89102; for Carbon and 5.521241 for Si
-    # tbm = NRLTB.NRLTBModel(:C or Si,
-    #                ZeroTGrand(eF = eF),
-    #                bzquad = TB.GammaPoint(),
-    #                cutoff = :original );
 
     # data
     D = Dict{String, Any}();
@@ -27,11 +19,8 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     data = Dict[]
     D["data"] = data;
 
-    # 0. compute Es on reference
-    # println("on reference: calculate Es")
+    # 0. Es on reference
     l0 = 1;
-    ### Es = site_energy(tbm, atd, l0);
-    # store Es
     dat = Dict{String, Any}();
     dat["Info"] = "Es of the origin site";
     ### dat["Es"] = Es;
@@ -44,7 +33,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     # store dEs
     dat = Dict{String, Any}();
     dat["Info"] = "dEs of the origin site";
-### dat["dEs"] = dEs_ref;
+    ### dat["dEs"] = dEs_ref;
     dat["datatype"] = "dEs"
     push!(data, dat);
 
@@ -68,7 +57,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
         for j = 1 : N₂
             ℓ = index_rcut2_0[j];
             # println("calculating dE_", ℓ)
-###         dEs_pert_0p[i, j, :, :] = site_energy_d(tbm, atd, ℓ) |> mat;
+            ###   dEs_pert_0p[i, j, :, :] = site_energy_d(tbm, atd, ℓ) |> mat;
         end
         # println("perturb the origin atom in direction ", i, "-h :")
         # X[i,l0] -= 2*h;
@@ -77,7 +66,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
         for j = 1 : N₂
             ℓ = index_rcut2_0[j];
             # println("calculating dE_", ℓ)
-###         dEs_pert_0n[i, j, :, :] = site_energy_d(tbm, atd, ℓ) |> mat;
+            ###   dEs_pert_0n[i, j, :, :] = site_energy_d(tbm, atd, ℓ) |> mat;
         end
         # X[i,l0] += h;
         # compute the central finite differences
@@ -90,7 +79,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
             #         index_rcut2_ℓ = neigs;
             #     end
             # end
-###         d2Esh[i, j, :, :] = 1.0/(2.0*h) *
+            ###   d2Esh[i, j, :, :] = 1.0/(2.0*h) *
                     # ( dEs_pert_0p[i,j,:,:] - dEs_pert_0n[i,j,:,:] );
             # store d2Esh
             dat = Dict{String, Any}();
@@ -100,7 +89,7 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
             dat["i"] = i;
             dat["l"] = ℓ;
             # dat["n"] = index_rcut2_ℓ;
-###         dat["d2Esh"] = d2Esh[i, j, :, :];
+            ###  dat["d2Esh"] = d2Esh[i, j, :, :];
             dat["datatype"] = "d2Esh";
             push!(data, dat);
         end

@@ -15,8 +15,7 @@ function evec(i)
 end
 
 
-
-function eval_dataset!(D::Dict, calc::AbstractCalculator; key = "train")
+function eval_dataset!(D::Dict, calc::AbstractCalculator; key="train")
     at = Atoms(D["at"])
     for dat in D["data"]   # TODO: parallelise this loop!
        # get some info about the local lsq system
@@ -27,7 +26,6 @@ function eval_dataset!(D::Dict, calc::AbstractCalculator; key = "train")
     end
     return D
 end
-
 
 
 """
@@ -71,8 +69,7 @@ eval_dat(::Val{:FC}, dat, calc, at) =
 #   SPECIAL EVALUATION ROUTINES FOR TB/QM MODELS
 # -----------------------------------------------------------------------------
 
-
-function eval_dataset_tb!(D::Dict, calc::AbstractCalculator; key = "train")
+function eval_dataset_tb!(D::Dict, calc::AbstractCalculator; key="train")
     at = Atoms(D["at"])
     DTs = [ dat["datatype"]  for dat in D["data"] ]
     for dt in unique(DTs)
@@ -82,13 +79,13 @@ function eval_dataset_tb!(D::Dict, calc::AbstractCalculator; key = "train")
     return D
 end
 
-
-function eval_dataset_tb!(valdt::Union{Val{:Es}, Val{:dEs}}, data, calc, at; key=key)
+function eval_dataset_tb!(valdt::Union{Val{:Es},Val{:dEs}},
+                          data, calc, at; key=key)
     @assert length(data) == 1
+    println("on reference: calculate ", valdt)
     data[1][key] = eval_dat(valdt, data[1], calc, at)
     return nothing
 end
-
 
 function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key=key)
     h = data[1]["h"]
@@ -115,8 +112,6 @@ function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key=key)
         calc[key] /= (2*h)
     end
 end
-
-
 
 
 

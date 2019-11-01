@@ -77,7 +77,7 @@ function solve_sequence(atmax, AT, Iinmax, Iinnext,
    set_calculator!(AT[1], calc)
    X0 = positions(AT[1])
    E0 = energy(AT[1])
-   minimise!(AT[1]; verbose=2, precond=FF(AT[1]))
+   minimise!(AT[1]; verbose=2) #, precond=FF(AT[1]))
    UU[1] = positions(AT[1]) .- X0
    EE[1] = energy(AT[1]) - E0
 
@@ -90,7 +90,7 @@ function solve_sequence(atmax, AT, Iinmax, Iinnext,
       X = copy(X0)
       X[Iinnext[n-1]] += UU[n-1]
       set_positions!(AT[n], X)
-      minimise!(AT[n]; verbose=2, precond=FF(AT[n], preconcalc))
+      minimise!(AT[n]; verbose=2) #, precond=FF(AT[n], preconcalc))
       UU[n] = positions(AT[n]) - X0
       EE[n] = energy(AT[n]) - E0
    end
@@ -103,7 +103,7 @@ function solve_sequence(atmax, AT, Iinmax, Iinnext,
    X = copy(X0max)
    X[Iinmax[end]] += UU[end]
    set_positions!(atmax, X)
-   minimise!(atmax; verbose=2, precond=FF(atmax, preconcalc))
+   minimise!(atmax; verbose=2) # , precond=FF(atmax, preconcalc))
    Umax = positions(atmax) - X0max
    Emax = energy(atmax) - E0max
 
