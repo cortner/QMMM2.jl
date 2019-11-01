@@ -16,14 +16,16 @@ tbm = NRLTB.NRLTBModel(:Si,
                        cutoff = :original );
 # QM cutoff: from the locality of to accuracy 1.0e-3
 r0 = rnn(:Si)
-tbm_cutoff = 3.0 * r0
+tbm_cutoff_1 = 3.0 * r0
+tbm_cutoff_2 = 2.0 * r0
+tbm_cutoff_3 = 1.0 * r0
 # trained system
 at_train() = bulk(:Si, cubic=true) * 4
 
 function sketch()
-   rcut = tbm_cutoff
+   rcut = [tbm_cutoff_1, tbm_cutoff_2, tbm_cutoff_3]
    at = at_train()
-   return QMMM2.data_djEs_sketch(at, 1e-3, [rcut, rcut, rcut])
+   return QMMM2.data_djEs_sketch(at, 1e-3, rcut)
 end
 
 function training_set()

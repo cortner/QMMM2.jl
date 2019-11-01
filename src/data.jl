@@ -80,36 +80,34 @@ function eval_dataset_tb!(D::Dict, calc::AbstractCalculator; key="train")
 end
 
 function eval_dataset_tb!(valdt::Union{Val{:Es},Val{:dEs}},
-                          data, calc, at; key=key)
+                          data, calc, at; key="train")
     @assert length(data) == 1
     println("on reference: calculate ", valdt)
     data[1][key] = eval_dat(valdt, data[1], calc, at)
-    return nothing
 end
 
-function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key=key)
+function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key="train")
+    X  = positions(at) |> mat;
     h = data[1]["h"]
-    # TODO: test all h are the same!
+    # d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
     for i = 1:3, sig in [1, -1]
-        # perturb X
-
-        # solve the eval problem
-
-        # compute dEs on all neighbours we care about
-        # as determined by data sketch
+        println("perturb the origin atom in direction ", i, "in", sig, "h :")
+        X[i,l0] += sig * h;
+        atd = deepcopy(at);
+        set_positions!(atd, X);
+        # compute dEs on all neighbours as determined by data sketch
         for dat in data
             if dat["i"] == i
                 l = dat["l"]
-                @assert dat["h"] == h
+                @assert dat["h"] == h  # test all h are the same!
                 # compute dEs
-
+                println("calculating dE_", ℓ)
+                dEs = site_energy_d(calc, atd, ℓ) |> mat;
                 # write dEs into the data point
-                calc[key] += dEs * sig
+                if !haskey(dat, key); dat[key] = 0.0; end
+                dat[key] += dEs * sig / (2.0*h)
             end
         end
-    end
-    for dat in data
-        calc[key] /= (2*h)
     end
 end
 
