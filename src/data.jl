@@ -74,7 +74,7 @@ function eval_dataset_tb!(D::Dict, calc::AbstractCalculator; key="train")
     DTs = [ dat["datatype"]  for dat in D["data"] ]
     for dt in unique(DTs)
         Idt = findall(DTs .== dt)
-        eval_dataset_tb!(Val(Symbol(dt)), D.data[Idt], calc, at; key=key)
+        eval_dataset_tb!(Val(Symbol(dt)), D["data"][Idt], calc, at; key=key)
     end
     return D
 end
@@ -87,24 +87,25 @@ function eval_dataset_tb!(valdt::Union{Val{:Es},Val{:dEs}},
 end
 
 function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key="train")
-    X  = positions(at) |> mat;
+    l0 = 1
+    X = positions(at) |> mat;
     h = data[1]["h"]
     # d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
     for i = 1:3, sig in [1, -1]
-        println("perturb the origin atom in direction ", i, "in", sig, "h :")
+        println("perturb the origin atom in direction ", i, " ", sig*h)
         X[i,l0] += sig * h;
         atd = deepcopy(at);
         set_positions!(atd, X);
+        X[i,l0] -= sig * h;
         # compute dEs on all neighbours as determined by data sketch
         for dat in data
             if dat["i"] == i
-                l = dat["l"]
+                ℓ = dat["l"]
                 @assert dat["h"] == h  # test all h are the same!
-                # compute dEs
                 println("calculating dE_", ℓ)
-                dEs = site_energy_d(calc, atd, ℓ) |> mat;
+                dEs = site_energy_d(calc, atd, ℓ)
                 # write dEs into the data point
-                if !haskey(dat, key); dat[key] = 0.0; end
+                if !haskey(dat, key); dat[key] = zeros(size(dEs)); end
                 dat[key] += dEs * sig / (2.0*h)
             end
         end
@@ -130,7 +131,7 @@ function _d2Esh(calc, at::Atoms,
    dVm = site_energy_d(calc, at, l)
    X[l0] += h * evec(i)
    set_positions!(at, X)
-   return (dVp - dVm) / (2*h)
+   return (dVp - dVm) / (2*h)  # Vector{JVecF}
 end
 
 function _force_constants(calc, at::Atoms, i0, h, i)
