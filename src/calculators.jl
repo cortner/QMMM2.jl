@@ -48,6 +48,7 @@ end
 
 function forces(calc::ForceMixing{T}, at::Atoms{T}) where {T}
    Iqm, Imm, Iqmbuf = get_domains(at)
+   # TODO: the following forces are not correctly implemented
    Fqm = forces(calc.QM, at; domain = Iqm)
    Fmm = forces(calc.MM, at; domain = Imm)
    return Fqm + Fmm

@@ -36,16 +36,16 @@ wL = 1.7          # 1.0 1.5  1.75
 rin = 0.7         # 0.6 0.7 0.8
 rtol = 1e-10      # 1e-5, 1e-4, ...
 bo = 3            # 4, 5, 6
-deg = 15          # 5, 10, 12, 15
+deg = 20          # 5, 10, 12, 15
 weights = Dict("Es" => 10.0, "dEs" => 10.0, "d2Esh" => 1.0)
 # TODO: test the parameters
 🚢, fitinfo = NRLqmmm.train_ship(D, bo, deg,
-               wL=wL, rinfact=rin, weights=weights, rtol=rtol)
+               wL = wL, rinfact = rin, weights = weights, rtol = rtol)
 @show fitinfo["rmse"]
 
 
 # Solve the reference problem, domain radius of reference ("exact" solution)
-Nmax = 8
+Nmax = 10
 # Rmax = Nmax * r0
 atmax = NRLqmmm.vac2d_config(Nmax, tbm)
 atmax0 = deepcopy(atmax)
@@ -56,9 +56,9 @@ E0_max = energy(atmax0)
 # set_calculator!(atmax, sw)
 # minimise!(atmax, precond = FF(atmax, sw))
 # use NRL-TB
+println("number of atoms = ", length(atmax), " start relaxation for pure QM...")
 set_calculator!(atmax, tbm)
-minimise!(atmax)
-E0 = energy(atmax)
+optresult = minimise!(atmax; verbose = 2)
 # add two Newton iterations to properly converge this!
 # TODO: fix the following newton iteration for tbm
 # H = lu( hessian(atmax) )
@@ -69,35 +69,44 @@ E0 = energy(atmax)
 #    set_dofs!(atmax, x)
 # end
 @show norm(gradient(atmax), Inf)
-E1_max = energy(atmax)
-dE_max = E0_max - E1_max
+E_max = E0_max - energy(atmax)
 
 
 ## Setup sequence of QM-regions and MM potentials
-NQM = [3.5, 4, 4.5, 5]
+NQM = [3, 4, 5, 6]
 RQM = NQM * r0
-E = zeros(size(NQM))
+errE = zeros(Float64, size(NQM))
+err2 = zeros(Float64, size(NQM))
+err∞ = zeros(Float64, size(NQM))
+errat = []
 for n = 1 : length(NQM)
    @show RQM[n]
-   at = deepcopy(atmax)
+   at = deepcopy(atmax0)  # at = deepcopy(atmax)
    xc = at["xcore"]
    r = [ norm(x - xc) for x in positions(at) ]
    Iqm = findall(r .< RQM[n])
-
-   at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm)
+   # QMMM relaxation
+   set_free!(at, findall(r .<=  RQM[n]))
+   # at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm)
+   E0 = energy(at)
    at0 = deepcopy(at)
-   optresult = minimise!(at0; verbose = 2, g_calls_limit = 20)
-   E[n] = energy(at0)
+   optresult = minimise!(at0; verbose = 2, gtol = 1.0e-4, g_calls_limit = 20)
+   E = E0 - energy(at0)
+   # error of the energy and configuration
+   errE[n] = E - Emax
+   U = positions(at) - positions(atmax)
+   push!(errat, U)
+   # TODO: need the implementation of cutoff(tbm)
+   # ee = JuLIPMaterials.strains(U, atmax0)
+   # err2[n] = norm(ee, 2)
+   # err∞[n] = norm(ee, Inf)
 end
-err = abs.(E .- E0)
-@show err
+@show errE
+@show err2
+@show err∞
 
 
 
-
-errE = zeros(length(RQM), length(ships))
-err2 = zeros(length(RQM), length(ships))
-errinf = zeros(length(RQM), length(ships))
 
 for n = length(RQM):-1:1, imm = length(ships):-1:1
    @show RQM[n], imm
