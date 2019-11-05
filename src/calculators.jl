@@ -21,6 +21,7 @@ struct EnergyMixing{T} <: AbstractCalculator
    MM::AbstractCalculator
 end
 
+
 function energy(calc::EnergyMixing{T}, at::Atoms{T}) where {T}
    Iqm, Imm, Iqmbuf = get_domains(at)
    # set_positions!(calc.atqm, positions(at)[Iqmbuf])
@@ -34,7 +35,9 @@ function forces(calc::EnergyMixing{T}, at::Atoms{T}) where {T}
    # set_positions!(calc.atqm, positions(at)[Iqmbuf])
    Fqm = forces(calc.QM, at; domain = Iqm)
    Fmm = forces(calc.MM, at; domain = Imm)
-   return Fqm + Fmm
+   # Fh = Fmm
+   # Fh[Iqmbuf] += Fqm
+   return Fqm + Fmm  # Fh
 end
 
 # ------------------------------------------------------------------
@@ -77,6 +80,14 @@ function prepare_qmmm!(at::Atoms, ::Type{EnergyMixing};
 
    # store the QM region in `at`
    at["qmmm_e_Iqm"] = Iqm
+
+   # create a QM buffer region
+   # construct Iqm_buf
+   # atqm = Atoms(:X, positions(at)[Iqm_buf])
+   # cell
+   # pbc
+   # atqm.Z[:] .= at.Z[1]
+
    # store the new calculator
    set_calculator!(at, EnergyMixing(at, Vqm, Vmm))
 

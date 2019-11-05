@@ -1,4 +1,6 @@
 # create the Dict for datas, but without any calculations
+
+# site energy data
 function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
 
     atd = deepcopy(at);
@@ -39,14 +41,12 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
             index_rcut2_0 = neigs;
         end
     end
+    index_rcut2_0 = unique(index_rcut2_0)
     N₂ = length(index_rcut2_0);
     d2Esh = zeros(3, N₂, 3, length(atd));
-    dEs_pert_0p = zeros(3, N₂, 3, length(atd));
-    dEs_pert_0n = zeros(3, N₂, 3, length(atd));
     for i = 1 : 3
         for j = 1 : N₂
             ℓ = index_rcut2_0[j];
-            index_rcut2_ℓ = [];
             # store d2Esh
             dat = Dict{String, Any}();
             dat["Info"] = "perturb the origin atom in direction i
@@ -58,6 +58,68 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
             push!(data, dat);
         end
     end
+
+    # 3. d3Es
+    index_rcut3_0 = [];
+    for (n, neigs, R) in sites(nlist_d3)
+        if n == l0
+            index_rcut3_0 = neigs
+        end
+    end
+    N₃ = length(index_rcut3_0)
+    # d3Esh = zeros(3, N₃, 3, )
+
+    return D
+end
+
+
+
+# force data
+function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
+
+    atd = deepcopy(at);
+    # neighbour lists for different cutoffs
+    rcut1, rcut2, rcut3 = cutoffs[:];
+    nlist_d1 = neighbourlist(at, rcut1);
+    nlist_d2 = neighbourlist(at, rcut2);
+    nlist_d3 = neighbourlist(at, rcut3);
+
+    # data
+    D = Dict{String, Any}();
+    D["species"] = JuLIP.Chemistry.chemical_symbol(at.Z[1]);
+    D["at"] = Dict(atd);
+    D["Info"] = "djF type training set";
+    D["cutoff_d"] = rcut1
+    D["cutoff_d2"] = rcut2;
+    D["cutoff_d3"] = rcut3;
+    data = Dict[]
+    D["data"] = data;
+
+    # 0. E
+    dat = Dict{String, Any}();
+    dat["Info"] = "energy";
+    dat["datatype"] = "E"
+    push!(data, dat);
+
+    # 1. F
+    dat = Dict{String, Any}();
+    dat["Info"] = "forces";
+    dat["datatype"] = "F"
+    push!(data, dat);
+
+    # 2. FC
+    for i = 1 : 3
+        # store force-constants
+        dat = Dict{String, Any}()
+        dat["Info"] = "perturb the origin atom in direction i
+                and store dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
+        dat["h"] = h;
+        dat["i"] = i;
+        dat["datatype"] = "FC";
+        push!(data, dat);
+    end
+
+    # 3. d3Es
 
     return D
 end

@@ -30,14 +30,18 @@ rcut = [tbm_cutoff_d1, tbm_cutoff_d2, tbm_cutoff_d3]
 at = at_train
 D = QMMM2.data_djEs_sketch(at, 1e-3, rcut)
 QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
+# D2 = QMMM2.data_djEs_sketch(at, 1e-3, rcut)
+# QMMM2.eval_dataset!(D2, tbm; key="NRLTB")
 
 ## train the MM model 🚢
 wL = 1.7          # 1.0 1.5  1.75
 rin = 0.7         # 0.6 0.7 0.8
-rtol = 1e-10      # 1e-5, 1e-4, ...
-bo = 3            # 4, 5, 6
-deg = 20          # 5, 10, 12, 15
+rtol = 1e-6       # 1e-5, 1e-10, 1e-15 ...
+bo = 2            # 2, 3, 4, 5
+deg = 21          # 5, 10, 12, 15
 weights = Dict("Es" => 10.0, "dEs" => 10.0, "d2Esh" => 1.0)
+basis = NRLqmmm.get_basis(bo, deg; rinfact=rin, wL=wL)
+@show length(basis)
 # TODO: test the parameters
 🚢, fitinfo = NRLqmmm.train_ship(D, bo, deg,
                wL = wL, rinfact = rin, weights = weights, rtol = rtol)
@@ -58,7 +62,7 @@ E0_max = energy(atmax0)
 # use NRL-TB
 println("number of atoms = ", length(atmax), " start relaxation for pure QM...")
 set_calculator!(atmax, tbm)
-optresult = minimise!(atmax; verbose = 2)
+optresult = minimise!(atmax; verbose = 2, gtol = 1.0e-3)
 # add two Newton iterations to properly converge this!
 # TODO: fix the following newton iteration for tbm
 # H = lu( hessian(atmax) )
@@ -72,8 +76,40 @@ optresult = minimise!(atmax; verbose = 2)
 E_max = E0_max - energy(atmax)
 
 
+# plot fuction
+function plot(at::Atoms{T}) where T <: Number
+   x, y, z = xyz(at)
+   # TODO: clean the original plot first
+   # TODO: plot QM and MM regions in different colors
+   PyPlot.plot(x, y, "bo", markersize = 5)
+   axis("equal")
+end
+# relaxation and plot the configuration within a QMMM decoposition
+α = 0.2
+RQM = 10.0
+at = deepcopy(atmax0)  # at = deepcopy(atmax)
+xc = at["xcore"]
+r = [ norm(x - xc) for x in positions(at) ]
+Iqm = findall(r .< RQM)
+# QMMM relaxation
+at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm)
+# start minimization
+for k = 1 : 20
+   frc = forces(at)
+   E = energy(at)
+   gnorm = norm(frc, 2)
+   at.X += α * frc
+   update!(at)
+   println("energy = ", E, "  gradient norm = ", gnorm)
+   plot(at)
+   if gnorm < 1.0e-3
+      break
+   end
+end
+
+
 ## Setup sequence of QM-regions and MM potentials
-NQM = [3, 4, 5, 6]
+NQM = [6, 5, 4, 3]
 RQM = NQM * r0
 errE = zeros(Float64, size(NQM))
 err2 = zeros(Float64, size(NQM))
@@ -86,18 +122,18 @@ for n = 1 : length(NQM)
    r = [ norm(x - xc) for x in positions(at) ]
    Iqm = findall(r .< RQM[n])
    # QMMM relaxation
-   set_free!(at, findall(r .<=  RQM[n]))
-   # at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm)
+   # set_free!(at, findall(r .<=  RQM[n]))
+   at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm)
    E0 = energy(at)
    at0 = deepcopy(at)
-   optresult = minimise!(at0; verbose = 2, gtol = 1.0e-4, g_calls_limit = 20)
+   optresult = minimise!(at0; verbose = 2, gtol = 1.0e-3, g_calls_limit = 20)
    E = E0 - energy(at0)
    # error of the energy and configuration
-   errE[n] = E - Emax
+   errE[n] = E - E_max
    U = positions(at) - positions(atmax)
    push!(errat, U)
    # TODO: need the implementation of cutoff(tbm)
-   # ee = JuLIPMaterials.strains(U, atmax0)
+   ee = JuLIPMaterials.strains(U, atmax0; rcut = 1.3 * rnn(:Si))
    # err2[n] = norm(ee, 2)
    # err∞[n] = norm(ee, Inf)
 end

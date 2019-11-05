@@ -93,6 +93,7 @@ function _asm_(djEs, djB, w, nn)
    return A, Y
 end
 
+
 function assemble_lsq(::Val{:dEs}, basis, config, at, w, key)
    # import data
    dEs = config[key]
@@ -148,6 +149,42 @@ function assemble_lsq(::Val{:Es}, basis, config, at, w, key)
 end
 
 
+# =========== TODO: check the following 3 furncitons ============== #
+
+function assemble_lsq(::Val{:E}, basis, config, at, w, key)
+   Y = [ w * config[key] ]
+   A = Matrix( w * energy(basis, at)' )
+   @assert size(Y) == (1,)
+   @assert size(A) == (1, length(basis))
+   return A, Y
+end
+
+function assemble_lsq(::Val{:F}, basis, config, at, w, key)
+   # import data
+   frc = config[key]
+   @assert length(frc) == length(at)
+   # assemble basis
+   dB = _forces(basis, at)
+   @assert size(dB) == (length(at), length(basis))
+   # -------
+   return _asm_(frc, dB, w, 1:length(at))
+end
+
+function assemble_lsq(::Val{:FC}, basis, config, at, w, key)
+   # import data
+   dF = config[key]
+   i = config["i"]    # the direction of the perturbation of l0 = 1
+   h = config["h"]
+   @assert length(d2Es) == length(at)
+   # assemble basis
+   d2B = _forces_dh(basis, at, l0, i, h)
+   @assert size(d2B) == (length(at), length(basis))
+   return _asm_(d2Es, d2B, w, 1:length(at))
+end
+
+# ====================================================================== #
+
+
 function assemble_lsq(basis, D::Dict, weights::Dict, key="train")
 
    at = Atoms(D["at"])::Atoms
@@ -196,9 +233,9 @@ end
 
 
 function lsqfit(basis, D::Dict, weights::Dict;
-                verbose=true, key="train", kwargs...)
+                verbose=true, key="train", pqrtol = 1e-5, kwargs...)
    A, Y, DT = assemble_lsq(basis, D, weights, key)
-   qrA = pqrfact(A; rtol=1e-5, kwargs...)
+   qrA = pqrfact(A; rtol=pqrtol, kwargs...)
    condA = cond(Matrix(qrA[:R]))
    verbose && @show condA
    c = qrA \ Y

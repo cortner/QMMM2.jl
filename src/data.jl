@@ -79,7 +79,7 @@ function eval_dataset_tb!(D::Dict, calc::AbstractCalculator; key="train")
     return D
 end
 
-function eval_dataset_tb!(valdt::Union{Val{:Es},Val{:dEs}},
+function eval_dataset_tb!(valdt::Union{Val{:E},Val{:Es},Val{:F},Val{:dEs}},
                           data, calc, at; key="train")
     @assert length(data) == 1
     println("on reference: calculate ", valdt)
@@ -93,10 +93,10 @@ function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key="train")
     # d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
     for i = 1:3, sig in [1, -1]
         println("perturb the origin atom in direction ", i, " ", sig*h)
-        X[i,l0] += sig * h;
-        atd = deepcopy(at);
-        set_positions!(atd, X);
-        X[i,l0] -= sig * h;
+        X[i,l0] += sig * h
+        atd = deepcopy(at)
+        set_positions!(atd, X)
+        X[i,l0] -= sig * h
         # compute dEs on all neighbours as determined by data sketch
         for dat in data
             if dat["i"] == i
@@ -105,8 +105,37 @@ function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key="train")
                 println("calculating dE_", ℓ)
                 dEs = site_energy_d(calc, atd, ℓ)
                 # write dEs into the data point
-                if !haskey(dat, key); dat[key] = zeros(size(dEs)); end
+                if !haskey(dat, key)
+                    dat[key] = zeros(size(dEs))
+                end
                 dat[key] += dEs * sig / (2.0*h)
+            end
+        end
+    end
+end
+
+function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
+    l0 = 1
+    X = positions(at) |> mat;
+    h = data[1]["h"]
+    # d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
+    for i = 1:3, sig in [1, -1]
+        println("perturb the origin atom in direction ", i, " ", sig*h)
+        X[i,l0] += sig * h
+        atd = deepcopy(at)
+        set_positions!(atd, X)
+        X[i,l0] -= sig * h
+        # compute dEs on all neighbours as determined by data sketch
+        for dat in data
+            if dat["i"] == i
+                @assert dat["h"] == h  # test all h are the same!
+                println("calculating F_", ℓ)
+                frc = forces(calc, atd, ℓ)
+                # write dEs into the data point
+                if !haskey(dat, key)
+                    dat[key] = zeros(size(dEs))
+                end
+                dat[key] += frc * sig / (2.0*h)
             end
         end
     end

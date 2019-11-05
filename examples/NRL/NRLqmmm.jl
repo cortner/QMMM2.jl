@@ -25,11 +25,13 @@ function train_ship(train_database, bo, deg;
             wL = 1.5,
             rinfact = 0.8,
             weights = Dict("Es" => 1.0, "dEs" => 10.0, "d2Esh" => 1.0),
-            rtol = 1e-5
+            rtol = 1e-5,
+            verbose = true
          )
    trainset = train_database
    basis = get_basis(bo, deg; rinfact=rinfact, wL=wL)
-   🚢, fitinfo = QMMM2.lsqfit(basis, trainset, weights; rtol=rtol, key="NRLTB")
+   🚢, fitinfo = QMMM2.lsqfit(basis, trainset, weights;
+                              pqrtol=rtol, key="NRLTB", verbose=verbose)
    @show fitinfo["rmse"]
    return 🚢, fitinfo
 end
