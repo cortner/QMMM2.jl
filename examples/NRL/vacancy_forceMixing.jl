@@ -28,18 +28,17 @@ train_size = 5;
 at_train = bulk(:Si, cubic=true) * (train_size, train_size, 1)
 rcut = [tbm_cutoff_d1, tbm_cutoff_d2, tbm_cutoff_d3]
 at = at_train
-D = QMMM2.data_djEs_sketch(at, 1e-3, rcut)
-QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
-# D2 = QMMM2.data_djEs_sketch(at, 1e-3, rcut)
-# QMMM2.eval_dataset!(D2, tbm; key="NRLTB")
+D = QMMM2.data_djF_sketch(at, 1e-3, rcut)
+QMMM2.eval_dataset!(D, tbm; key="NRLTB")
+# QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
 
 ## train the MM model 🚢
 wL = 1.7          # 1.0 1.5  1.75
 rin = 0.7         # 0.6 0.7 0.8
 rtol = 1e-3       # 1e-5, 1e-4, ...
 bo = 2            # 2, 3, 4, 5
-deg = 21          # 5, 10, 12, 15
-weights = Dict("Es" => 10.0, "dEs" => 10.0, "d2Esh" => 1.0)
+deg = 5           # 5, 10, 12, 15
+weights = Dict("E" => 10.0, "F" => 10.0, "FC" => 1.0)
 basis = NRLqmmm.get_basis(bo, deg; rinfact=rin, wL=wL)
 @show length(basis)
 # TODO: test the parameters

@@ -46,11 +46,17 @@ function vac2d_config(Ndom, calc)
    r0 = [ norm(x - coord_centre) for x in X0]
    i0 = findmin(r0)[2]
    x0 = X0[i0]
-   deleteat!(at, i0)
+   # deleteat!(at, i0)
    # compute the domains
    X = positions(at)
    set_data!(at, "xcore", x0)
    set_calculator!(at, calc)
+   # inplane!(at)
+   mask = fill(false, 3, length(at))
+   free = 1:length(at)
+   mask[1, free] .= true
+   mask[2, free] .= true
+   set_mask!(at, mask)
    return at
 end
 

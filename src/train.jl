@@ -149,7 +149,15 @@ function assemble_lsq(::Val{:Es}, basis, config, at, w, key)
 end
 
 
-# =========== TODO: check the following 3 furncitons ============== #
+# =========== TODO: check the following furncitons ============== #
+function _force_dh(calc, at::Atoms, i0, h, i)
+    at[i0] += h * evec(i)
+    Fp = forces(calc, at)
+    at[i0] -= 2 * h * evec(i)
+    Fm = forces(calc, at)
+    at[i0] +=  h * evec(i0)
+    return  mat( (Fp - Fm) / (2*h) )[:] |> collect
+end
 
 function assemble_lsq(::Val{:E}, basis, config, at, w, key)
    Y = [ w * config[key] ]
@@ -158,7 +166,6 @@ function assemble_lsq(::Val{:E}, basis, config, at, w, key)
    @assert size(A) == (1, length(basis))
    return A, Y
 end
-
 function assemble_lsq(::Val{:F}, basis, config, at, w, key)
    # import data
    frc = config[key]
@@ -166,10 +173,8 @@ function assemble_lsq(::Val{:F}, basis, config, at, w, key)
    # assemble basis
    dB = _forces(basis, at)
    @assert size(dB) == (length(at), length(basis))
-   # -------
    return _asm_(frc, dB, w, 1:length(at))
 end
-
 function assemble_lsq(::Val{:FC}, basis, config, at, w, key)
    # import data
    dF = config[key]
@@ -182,6 +187,16 @@ function assemble_lsq(::Val{:FC}, basis, config, at, w, key)
    return _asm_(d2Es, d2B, w, 1:length(at))
 end
 
+
+function assemble_lsq(::Val{:EF}, basis, config, at, w, key)
+   # import data
+   frc = config[key]
+   @assert length(frc) == length(at)
+   # assemble basis
+   dB = _forces(basis, at)
+   @assert size(dB) == (length(at), length(basis))
+   return _asm_(frc, dB, w, 1:length(at))
+end
 # ====================================================================== #
 
 

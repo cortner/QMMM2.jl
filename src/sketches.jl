@@ -75,7 +75,9 @@ end
 
 
 # force data
-function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
+function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
+                         nconfig_F = 100, rndF = 0.2 * rnn(at.Z[1]),
+                         nconfig_V = 100, rndV = 0.2)
 
     atd = deepcopy(at);
     # neighbour lists for different cutoffs
@@ -113,6 +115,7 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
         dat = Dict{String, Any}()
         dat["Info"] = "perturb the origin atom in direction i
                 and store dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
+        dat["i0"] = 1;
         dat["h"] = h;
         dat["i"] = i;
         dat["datatype"] = "FC";
@@ -120,6 +123,33 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     end
 
     # 3. d3Es
+
+    # 4. random forces
+    for n = 1:nconfig_F
+        at1 = deepcopy(at)
+        r = rndF * rand()
+        rattle!(at1, r)
+        dat = Dict{String, Any}(
+                "Info" => "Forces on Random Configuration",
+                "r" => r,
+                "at" => Dict(at1),
+                "datatype" => "EF")
+        push!(data, dat)
+    end
+
+    # 5. random cells
+    s = chemical_symbol(at.Z[1])
+    for n = 1:nconfig_V
+        at1 = bulk(s)  # correcrt equilibrium distance???!!!???
+        r = rndV * rand()
+        F = I + r * 2 * (rand(3,3) .- 0.5)
+        apply_defm!(at1, F)
+        dat = Dict{String, Any}(
+                "Info" => "Virials on Random Cell Shapes",
+                "r" => r,
+                "at" => Dict(at1),
+                "datatype" => "EFV")
+    end
 
     return D
 end

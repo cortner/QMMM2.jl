@@ -55,13 +55,21 @@ eval_dat(::Val{:E}, dat, calc, at) =
         energy(calc, at)
 
 eval_dat(::Val{:F}, dat, calc, at) =
-        collect(mat(forces(calc, at))[:])
+        forces(calc, at)
+        # collect(mat(forces(calc, at))[:])
 
 eval_dat(::Val{:V}, dat, calc, at) =
         virial(calc, at)[SVector(1,2,3,5,6,9)]
 
 eval_dat(::Val{:FC}, dat, calc, at) =
         _force_constants(calc, at, dat["i0"], dat["h"], dat["i"])
+
+eval_dat(::Val{:EF}, dat, calc, at) =
+        forces(calc, at))
+
+eval_dat(::Val{:EFV}, dat, calc, at) =
+        virial(calc, at)[SVector(1,2,3,5,6,9)]
+
 
 
 
@@ -133,7 +141,7 @@ function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
                 frc = forces(calc, atd, ℓ)
                 # write dEs into the data point
                 if !haskey(dat, key)
-                    dat[key] = zeros(size(dEs))
+                    dat[key] = zeros(size(frc))
                 end
                 dat[key] += frc * sig / (2.0*h)
             end

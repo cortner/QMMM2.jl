@@ -30,8 +30,6 @@ rcut = [tbm_cutoff_d1, tbm_cutoff_d2, tbm_cutoff_d3]
 at = at_train
 D = QMMM2.data_djEs_sketch(at, 1e-3, rcut)
 QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
-# D2 = QMMM2.data_djEs_sketch(at, 1e-3, rcut)
-# QMMM2.eval_dataset!(D2, tbm; key="NRLTB")
 
 ## train the MM model 🚢
 wL = 1.7          # 1.0 1.5  1.75
@@ -49,20 +47,20 @@ basis = NRLqmmm.get_basis(bo, deg; rinfact=rin, wL=wL)
 
 
 # Solve the reference problem, domain radius of reference ("exact" solution)
-Nmax = 10
+Nmax = 8
 # Rmax = Nmax * r0
-atmax = NRLqmmm.vac2d_config(Nmax, tbm)
-atmax0 = deepcopy(atmax)
-X0 = positions(atmax0)
-E0_max = energy(atmax0)
+atmax = NRLqmmm.vac2d_config(Nmax, tbm);
+atmax0 = deepcopy(atmax);
+X0 = positions(atmax0);
+E0_max = energy(atmax0);
 # TODO: use SW to relax the lattice to obtain an initial configuration
 # sw = StillingerWeber()
 # set_calculator!(atmax, sw)
 # minimise!(atmax, precond = FF(atmax, sw))
 # use NRL-TB
 println("number of atoms = ", length(atmax), " start relaxation for pure QM...")
-set_calculator!(atmax, tbm)
-optresult = minimise!(atmax; verbose = 2, gtol = 1.0e-3)
+set_calculator!(atmax, tbm);
+optresult = minimise!(atmax; verbose = 2, gtol = 1.0e-3);
 # add two Newton iterations to properly converge this!
 # TODO: fix the following newton iteration for tbm
 # H = lu( hessian(atmax) )
@@ -77,38 +75,38 @@ E_max = E0_max - energy(atmax)
 
 
 # plot fuction
-function plot(at::Atoms{T}) where T <: Number
-   x, y, z = xyz(at)
-   # TODO: clean the original plot first
-   # TODO: plot QM and MM regions in different colors
-   PyPlot.plot(x, y, "bo", markersize = 5)
+function plot(at::Atoms{T}; Iqm = 1:length(at), i = 1) where T <: Number
+   x, y, _ = xyz(at)
+   figure(i)
+   PyPlot.plot(x, y, "bo", x[Iqm], y[Iqm], "ro", markersize = 5)
    axis("equal")
 end
 # relaxation and plot the configuration within a QMMM decoposition
-α = 0.2
+α = 0.03
 RQM = 10.0
-at = deepcopy(atmax0)  # at = deepcopy(atmax)
-xc = at["xcore"]
-r = [ norm(x - xc) for x in positions(at) ]
-Iqm = findall(r .< RQM)
+at = deepcopy(atmax0);  # at = deepcopy(atmax)
+xc = at["xcore"];
+r = [ norm(x - xc) for x in positions(at) ];
+Iqm = findall(r .< RQM);
 # QMMM relaxation
-at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm)
+at = prepare_qmmm!(at, EnergyMixing; Vqm = tbm, Vmm = 🚢, Iqm = Iqm);
 # start minimization
 for k = 1 : 20
-   frc = forces(at)
-   E = energy(at)
-   gnorm = norm(frc, 2)
-   at.X += α * frc
-   update!(at)
+   frc = forces(at);
+   E = energy(at);
+   gnorm = norm(frc, Inf);  # gnorm = norm(frc, 2);
+   X0 = positions(at);
+   set_positions!(at, X0.+α*frc);
    println("energy = ", E, "  gradient norm = ", gnorm)
-   plot(at)
+   plot(at, Iqm = Iqm, i = k)
+   # pause(5.0) close()
    if gnorm < 1.0e-3
       break
    end
 end
 
 
-## Setup sequence of QM-regions and MM potentials
+# Setup sequence of QM-regions and MM potentials
 NQM = [6, 5, 4, 3]
 RQM = NQM * r0
 errE = zeros(Float64, size(NQM))
