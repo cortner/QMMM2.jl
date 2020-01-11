@@ -1,6 +1,9 @@
 module NRLqmmm
 
-using JuLIP, QMMM2, NeighbourLists, LinearAlgebra, SHIPs, JuLIPMaterials
+# using QMMM2
+QMMM2 = Main.QMMM2
+
+using JuLIP, NeighbourLists, LinearAlgebra, SHIPs, JuLIPMaterials
 using JuLIP.MLIPs: IPSuperBasis
 using SKTB
 using SKTB: ZeroTGrand, ZeroT, MPGrid, spectrum, GammaPoint

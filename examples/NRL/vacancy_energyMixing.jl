@@ -1,11 +1,12 @@
 # QM/MM hybrid approximation
 
-using JuLIP, QMMM2, SHIPs, PrettyTables, LinearAlgebra, Plots,
+# using QMMM2
+using JuLIP, SHIPs, PrettyTables, LinearAlgebra, Plots,
       DataFrames, JuLIPMaterials
 using JuLIP.MLIPs
 using SKTB
 using SKTB: ZeroTGrand, ZeroT, MPGrid, spectrum, GammaPoint
-include(@__DIR__() * "/NRLqmmm.jl")
+# include(@__DIR__() * "/NRLqmmm.jl")
 
 TB = SKTB
 NRLTB = SKTB.NRLTB
@@ -35,7 +36,7 @@ QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
 wL = 1.7          # 1.0 1.5  1.75
 rin = 0.7         # 0.6 0.7 0.8
 rtol = 1e-6       # 1e-5, 1e-10, 1e-15 ...
-bo = 2            # 2, 3, 4, 5
+bo = 3            # 2, 3, 4, 5
 deg = 21          # 5, 10, 12, 15
 weights = Dict("Es" => 10.0, "dEs" => 10.0, "d2Esh" => 1.0)
 basis = NRLqmmm.get_basis(bo, deg; rinfact=rin, wL=wL)

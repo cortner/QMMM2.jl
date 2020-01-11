@@ -21,8 +21,9 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     data = Dict[]
     D["data"] = data;
 
-    # 0. Es
     l0 = 1;
+
+    # 0. Es
     dat = Dict{String, Any}();
     dat["Info"] = "Es of the origin site";
     dat["datatype"] = "Es"
@@ -49,8 +50,8 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
             ℓ = index_rcut2_0[j];
             # store d2Esh
             dat = Dict{String, Any}();
-            dat["Info"] = "perturb the origin atom in direction i
-                and store d2Esh = 1/2h * ( E_{ℓ,n}(y+h*e₀) - E_{ℓ,n}(y-h*e₀) )";
+            dat["Info"] = "perturb the origin atom in direction i and store
+                    d2Esh = 1/2h * ( E_{ℓ,n}(y+h*e₀) - E_{ℓ,n}(y-h*e₀) )";
             dat["h"] = h;
             dat["i"] = i;
             dat["l"] = ℓ;
@@ -97,12 +98,6 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
     data = Dict[]
     D["data"] = data;
 
-    # 0. E
-    dat = Dict{String, Any}();
-    dat["Info"] = "energy";
-    dat["datatype"] = "E"
-    push!(data, dat);
-
     # 1. F
     dat = Dict{String, Any}();
     dat["Info"] = "forces";
@@ -113,43 +108,56 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
     for i = 1 : 3
         # store force-constants
         dat = Dict{String, Any}()
-        dat["Info"] = "perturb the origin atom in direction i
-                and store dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
-        dat["i0"] = 1;
-        dat["h"] = h;
+        dat["Info"] = "perturb the origin atom in direction i and store
+                      dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
+        dat["l0"] = 1;
         dat["i"] = i;
+        dat["h"] = h;
         dat["datatype"] = "FC";
         push!(data, dat);
     end
 
-    # 3. d3Es
+    # # 3. d2F
+    # for i = 1 : 3, j = 1 : 3
+    #     for k = 1 : length()
+    #     # store force-constants
+    #     dat = Dict{String, Any}()
+    #     dat["Info"] = "perturb the origin atom in direction i
+    #             perturb the k-th atom in direction j
+    #             and store dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
+    #     dat["i0"] = 1;
+    #     dat["h"] = h;
+    #     dat["i"] = i;
+    #     dat["datatype"] = "d2F";
+    #     push!(data, dat);
+    # end
 
-    # 4. random forces
-    for n = 1:nconfig_F
-        at1 = deepcopy(at)
-        r = rndF * rand()
-        rattle!(at1, r)
-        dat = Dict{String, Any}(
-                "Info" => "Forces on Random Configuration",
-                "r" => r,
-                "at" => Dict(at1),
-                "datatype" => "EF")
-        push!(data, dat)
-    end
-
-    # 5. random cells
-    s = chemical_symbol(at.Z[1])
-    for n = 1:nconfig_V
-        at1 = bulk(s)  # correcrt equilibrium distance???!!!???
-        r = rndV * rand()
-        F = I + r * 2 * (rand(3,3) .- 0.5)
-        apply_defm!(at1, F)
-        dat = Dict{String, Any}(
-                "Info" => "Virials on Random Cell Shapes",
-                "r" => r,
-                "at" => Dict(at1),
-                "datatype" => "EFV")
-    end
+    # # 4. random forces
+    # for n = 1:nconfig_F
+    #     at1 = deepcopy(at)
+    #     r = rndF * rand()
+    #     rattle!(at1, r)
+    #     dat = Dict{String, Any}(
+    #             "Info" => "Forces on Random Configuration",
+    #             "r" => r,
+    #             "at" => Dict(at1),
+    #             "datatype" => "EF")
+    #     push!(data, dat)
+    # end
+    #
+    # # 5. random cells
+    # s = chemical_symbol(at.Z[1])
+    # for n = 1:nconfig_V
+    #     at1 = bulk(s)  # correcrt equilibrium distance???!!!???
+    #     r = rndV * rand()
+    #     F = I + r * 2 * (rand(3,3) .- 0.5)
+    #     apply_defm!(at1, F)
+    #     dat = Dict{String, Any}(
+    #             "Info" => "Virials on Random Cell Shapes",
+    #             "r" => r,
+    #             "at" => Dict(at1),
+    #             "datatype" => "EFV")
+    # end
 
     return D
 end

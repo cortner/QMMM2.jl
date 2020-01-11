@@ -6,9 +6,9 @@ include("train.jl")
 
 include("calculators.jl")
 
-include("solve.jl")
+# include("solve.jl")
 
-include("sketches.jl") 
+include("sketches.jl")
 
 # include("edip.jl")
 

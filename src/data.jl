@@ -51,26 +51,20 @@ eval_dat(::Val{:dEs}, dat, calc, at) =
 eval_dat(::Val{:d2Esh}, dat, calc, at) =
         _d2Esh(calc, at, 1, dat["l"], dat["i"], dat["h"])
 
-eval_dat(::Val{:E}, dat, calc, at) =
-        energy(calc, at)
+eval_dat(::Val{:E}, dat, calc, at) = energy(calc, at)
 
-eval_dat(::Val{:F}, dat, calc, at) =
-        forces(calc, at)
+eval_dat(::Val{:F}, dat, calc, at) = forces(calc, at)
         # collect(mat(forces(calc, at))[:])
+
+eval_dat(::Val{:FC}, dat, calc, at) =
+        _force_constants(calc, at, 1, dat["i"], dat["h"])
 
 eval_dat(::Val{:V}, dat, calc, at) =
         virial(calc, at)[SVector(1,2,3,5,6,9)]
 
-eval_dat(::Val{:FC}, dat, calc, at) =
-        _force_constants(calc, at, dat["i0"], dat["h"], dat["i"])
+# eval_dat(::Val{:EF}, dat, calc, at) = forces(calc, at)
 
-eval_dat(::Val{:EF}, dat, calc, at) =
-        forces(calc, at))
-
-eval_dat(::Val{:EFV}, dat, calc, at) =
-        virial(calc, at)[SVector(1,2,3,5,6,9)]
-
-
+# eval_dat(::Val{:EFV},dat,calc,at) = virial(calc,at)[SVector(1,2,3,5,6,9)]
 
 
 # -----------------------------------------------------------------------------
@@ -126,7 +120,7 @@ function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
     l0 = 1
     X = positions(at) |> mat;
     h = data[1]["h"]
-    # d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
+    # dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )
     for i = 1:3, sig in [1, -1]
         println("perturb the origin atom in direction ", i, " ", sig*h)
         X[i,l0] += sig * h
@@ -137,8 +131,8 @@ function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
         for dat in data
             if dat["i"] == i
                 @assert dat["h"] == h  # test all h are the same!
-                println("calculating F_", ℓ)
-                frc = forces(calc, atd, ℓ)
+                println("calculating the forces\n")
+                frc = forces(calc, atd)
                 # write dEs into the data point
                 if !haskey(dat, key)
                     dat[key] = zeros(size(frc))
@@ -150,6 +144,8 @@ function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
 end
 
 
+
+# =============== General ROUTINES =============== #
 
 """
 l0 : site that we are perturbing
@@ -171,11 +167,11 @@ function _d2Esh(calc, at::Atoms,
    return (dVp - dVm) / (2*h)  # Vector{JVecF}
 end
 
-function _force_constants(calc, at::Atoms, i0, h, i)
-    at[i0] += h * evec(i)
+function _force_constants(calc, at::Atoms, l0, i, h)
+    at[l0] += h * evec(i)
     Fp = forces(calc, at)
-    at[i0] -= 2 * h * evec(i)
+    at[l0] -= 2 * h * evec(i)
     Fm = forces(calc, at)
-    at[i0] +=  h * evec(i0)
+    at[l0] +=  h * evec(i0)
     return  mat( (Fp - Fm) / (2*h) )[:] |> collect
 end

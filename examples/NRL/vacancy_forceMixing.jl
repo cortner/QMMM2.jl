@@ -1,6 +1,7 @@
 # QM/MM hybrid approximation
 
-using JuLIP, QMMM2, SHIPs, PrettyTables, LinearAlgebra, Plots,
+# using QMMM2
+using JuLIP, SHIPs, PrettyTables, LinearAlgebra, Plots,
       DataFrames, JuLIPMaterials
 using JuLIP.MLIPs
 using SKTB
@@ -29,7 +30,7 @@ at_train = bulk(:Si, cubic=true) * (train_size, train_size, 1)
 rcut = [tbm_cutoff_d1, tbm_cutoff_d2, tbm_cutoff_d3]
 at = at_train
 D = QMMM2.data_djF_sketch(at, 1e-3, rcut)
-QMMM2.eval_dataset!(D, tbm; key="NRLTB")
+QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
 # QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
 
 ## train the MM model 🚢
