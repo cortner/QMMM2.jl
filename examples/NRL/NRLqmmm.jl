@@ -27,7 +27,8 @@ end
 function train_ship(train_database, bo, deg;
             wL = 1.5,
             rinfact = 0.8,
-            weights = Dict("Es" => 1.0, "dEs" => 10.0, "d2Esh" => 1.0),
+            # weights = Dict("Es" => 1.0, "dEs" => 10.0, "d2Esh" => 1.0),
+weights = Dict("Es" => 1.0, "dEs" => 1.0, "d2Esh" => 1.0, "d3Esh" => 1.0),
             rtol = 1e-5,
             verbose = true
          )

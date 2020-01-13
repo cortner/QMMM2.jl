@@ -59,9 +59,8 @@ l0    : first site that we are perturbing
  i_k  : direction of the perturbation of k
  h    : finite-difference step
 """
-function _site_energy_d3h(basis, at::Atoms,
-                        l0::Integer, l::Integer, k::Integer,
-                        i_l0::Integer, i_k::Integer, h::Real)
+function _site_energy_d3h(basis, at::Atoms, l0::Integer, l::Integer,
+                     k::Integer, i_l0::Integer, i_k::Integer, h::Real)
    X = positions(at)
    # -------------------------
    X[l0] += h * evec(i_l0)
@@ -102,8 +101,7 @@ l0 : site that we are perturbing
  i : direction of the perturbation (E1, E2, E3)
  h : finite-difference step
 """
-function _forces_dh(basis, at::Atoms,
-                   l0::Integer, i::Integer, h::Real)
+function _forces_dh(basis, at::Atoms, l0::Integer, i::Integer, h::Real)
     X = positions(at)
     X[l0] += h * evec(i)
     set_positions!(at, X)
@@ -158,11 +156,11 @@ function assemble_lsq(::Val{:d3Esh}, basis, config, at, w, key)
    # import data
    d3Es = config[key]
    h = config["h"]
-   l = config["l"]   # the atom where we evaluate the site energy deriv
-   l0 = 1                # first perturbed atom
-   i_l0 = config["i"]    # the direction of the perturbation of l0 = 1
-   k = config["k"]       # second perturbed atom
-   i_k = config["j"]     # direction of perturbation of k
+   l = config["l"]     # the atom where we evaluate the site energy deriv
+   l0 = 1                   # first perturbed atom
+   i_l0 = config["i_l0"]    # the direction of the perturbation of l0 = 1
+   k = config["k"]          # second perturbed atom
+   i_k = config["i_k"]      # direction of perturbation of k
    @assert length(d3Es) == length(at)
    # assemble basis
    d3B = _site_energy_d3h(basis, at, l0, l, k, i_l0, i_k, h)

@@ -39,36 +39,59 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     index_rcut2_0 = [];
     for (n, neigs, R) in sites(nlist_d2)
         if n == l0
-            index_rcut2_0 = neigs;
+            global index_rcut2_0 = neigs;
         end
     end
     index_rcut2_0 = unique(index_rcut2_0)
     N₂ = length(index_rcut2_0);
-    d2Esh = zeros(3, N₂, 3, length(atd));
-    for i = 1 : 3
-        for j = 1 : N₂
-            ℓ = index_rcut2_0[j];
-            # store d2Esh
-            dat = Dict{String, Any}();
-            dat["Info"] = "perturb the origin atom in direction i and store
-                    d2Esh = 1/2h * ( E_{ℓ,n}(y+h*e₀) - E_{ℓ,n}(y-h*e₀) )";
-            dat["h"] = h;
-            dat["i"] = i;
-            dat["l"] = ℓ;
-            dat["datatype"] = "d2Esh";
-            push!(data, dat);
-        end
+    # d2Esh = zeros(3, N₂, 3, length(atd));
+    for i = 1 : 3, j = 1 : N₂
+        ℓ = index_rcut2_0[j];
+        dat = Dict{String, Any}();
+        dat["Info"] = "perturb the origin atom in direction i and store
+                d2Esh = 1/2h * ( E_{ℓ,n}(y+h*e₀) - E_{ℓ,n}(y-h*e₀) )";
+        dat["h"] = h;
+        dat["i"] = i;
+        dat["l"] = ℓ;
+        dat["datatype"] = "d2Esh";
+        push!(data, dat);
     end
 
     # 3. d3Es
     index_rcut3_0 = [];
     for (n, neigs, R) in sites(nlist_d3)
         if n == l0
-            index_rcut3_0 = neigs
+            global index_rcut3_0 = neigs
         end
     end
-    N₃ = length(index_rcut3_0)
+    index_rcut3_0 = unique(index_rcut3_0)
+    N₃ = length(index_rcut3_0);
     # d3Esh = zeros(3, N₃, 3, )
+    for i = 1 : 3, j = 1 : 3, s = 1 : N₃
+        ℓ = index_rcut3_0[s];
+        index_rcut3_ℓ = [];
+        for (m, neigs, R) in sites(nlist_d3)
+            if m == ℓ
+                index_rcut3_ℓ = neigs;
+            end
+        end
+        index_rcut3_ℓ = unique(index_rcut3_ℓ)
+        N₃ℓ = length(index_rcut3_ℓ)
+        for t = 1 : N₃ℓ
+            k = index_rcut3_ℓ[t];
+            dat = Dict{String, Any}();
+            dat["Info"] = "perturb the origin atom in direction i and store
+                d3Esh = 1/4h²⋅[ ∇E_n(y+h⋅eⁱ_ℓ+h⋅eʲ_k) + ∇E_n(y-h⋅eⁱ_ℓ-h⋅eʲ_k)
+                       -∇E_n(y+h⋅eⁱ_ℓ) - ∇E_n(y+h⋅eʲ_k) ]";
+            dat["h"] = h;
+            dat["i_l0"] = i;
+            dat["i_k"] = j;
+            dat["k"] = k
+            dat["l"] = ℓ
+            dat["datatype"] = "d3Esh";
+            push!(data, dat);
+        end
+    end
 
     return D
 end
@@ -117,14 +140,14 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
         push!(data, dat);
     end
 
-    # # 3. d2F
+    # 3. d2F
     # for i = 1 : 3, j = 1 : 3
-    #     for k = 1 : length()
+    #     # for k = 1 : length()
     #     # store force-constants
     #     dat = Dict{String, Any}()
     #     dat["Info"] = "perturb the origin atom in direction i
     #             perturb the k-th atom in direction j
-    #             and store dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
+    #             and store d2Fh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
     #     dat["i0"] = 1;
     #     dat["h"] = h;
     #     dat["i"] = i;

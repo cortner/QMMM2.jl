@@ -1,12 +1,12 @@
 # QM/MM hybrid approximation
 
 # using QMMM2
-using JuLIP, SHIPs, PrettyTables, LinearAlgebra, Plots,
-      DataFrames, JuLIPMaterials
+using PrettyTables, LinearAlgebra, Plots, DataFrames
+using JuLIP, SHIPs, JuLIPMaterials
 using JuLIP.MLIPs
 using SKTB
 using SKTB: ZeroTGrand, ZeroT, MPGrid, spectrum, GammaPoint
-# include(@__DIR__() * "/NRLqmmm.jl")
+include(@__DIR__() * "/NRLqmmm.jl")
 
 TB = SKTB
 NRLTB = SKTB.NRLTB
@@ -25,7 +25,7 @@ tbm_cutoff_d2 = 4.0 * r0
 tbm_cutoff_d3 = 3.0 * r0
 
 ## create the database from the QM (NRL-TB) model
-train_size = 5;
+train_size = 1;
 at_train = bulk(:Si, cubic=true) * (train_size, train_size, 1)
 rcut = [tbm_cutoff_d1, tbm_cutoff_d2, tbm_cutoff_d3]
 at = at_train
@@ -36,9 +36,13 @@ QMMM2.eval_dataset_tb!(D, tbm; key="NRLTB")
 wL = 1.7          # 1.0 1.5  1.75
 rin = 0.7         # 0.6 0.7 0.8
 rtol = 1e-6       # 1e-5, 1e-10, 1e-15 ...
-bo = 3            # 2, 3, 4, 5
-deg = 21          # 5, 10, 12, 15
-weights = Dict("Es" => 10.0, "dEs" => 10.0, "d2Esh" => 1.0)
+bo = 2            # 2, 3, 4, 5
+deg = 8          # 5, 10, 12, 15
+
+# TODO： careful whether include d3Es, also the functions in NRLqmmm.jl ...
+# weights = Dict("Es" => 10.0, "dEs" => 10.0, "d2Esh" => 1.0)
+weights = Dict("Es" => 10.0, "dEs" => 1.0, "d2Esh" => 1.0, "d3Esh" => 1.0)
+
 basis = NRLqmmm.get_basis(bo, deg; rinfact=rin, wL=wL)
 @show length(basis)
 # TODO: test the parameters

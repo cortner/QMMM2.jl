@@ -94,7 +94,7 @@ function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key="train")
     h = data[1]["h"]
     # d2Esh = 1/2h * ( E_{ℓ,n}(y+h⋅e0) - E_{ℓ,n}(y-h⋅e0) )
     for i = 1:3, sig in [1, -1]
-        println("perturb the origin atom in direction ", i, " ", sig*h)
+        println("perturb the ", l0, "-th atom in direction ", sig, i)
         X[i,l0] += sig * h
         atd = deepcopy(at)
         set_positions!(atd, X)
@@ -115,6 +115,45 @@ function eval_dataset_tb!(::Val{:d2Esh}, data, calc, at; key="train")
         end
     end
 end
+
+function eval_dataset_tb!(::Val{:d3Esh}, data, calc, at; key="train")
+    l0 = 1
+    X = positions(at) |> mat;
+    h = data[1]["h"]
+    # collect all the "k" indecies
+    Dks = [ dat["k"]  for dat in data ]
+    for k in unique(Dks)
+        Idk = findall(Dks .== k)
+        # d3Esh = 1/4h²⋅[ ∇E_n(y+h⋅eⁱ_ℓ+h⋅eʲ_k) + ∇E_n(y-h⋅eⁱ_ℓ-h⋅eʲ_k)
+        #                -∇E_n(y+h⋅eⁱ_ℓ) - ∇E_n(y+h⋅eʲ_k) ]
+    for i_l0 = 1:3, sig_l0 in [1,-1], i_k = 1:3, sig_k in [-1,1]
+        println("perturb the ", l0, "-th atom in direction ", i_l0,
+                "with", sig_l0, "and perturb the ", k,
+                "-th atom in direction ", i_k, "with" sig_k)
+        X[i_l0,l0] += sig_l0 * h
+        X[i_k,k] += sig_k * h
+        atd = deepcopy(at)
+        set_positions!(atd, X)
+        X[i_l0,l0] -= sig_l0 * h
+        X[i_k,k] -= sig_k * h
+        # compute dEs on all neighbours as determined by data sketch
+        for dat in data[Idk]
+        if dat["i_l0"] == i_l0 && dat["i_k"] == i_k
+            ℓ = dat["l"]
+            @assert dat["h"] == h  # test all h are the same!
+            println("calculating dE_", ℓ)
+            dEs = site_energy_d(calc, atd, ℓ)
+            # write dEs into the data point
+            if !haskey(dat, key)
+                dat[key] = zeros(size(dEs))
+            end
+            dat[key] += dEs * sig_l0*sig_k / (4.0*h^2)
+        end
+        end
+    end
+    end
+end
+
 
 function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
     l0 = 1
@@ -172,6 +211,7 @@ function _force_constants(calc, at::Atoms, l0, i, h)
     Fp = forces(calc, at)
     at[l0] -= 2 * h * evec(i)
     Fm = forces(calc, at)
-    at[l0] +=  h * evec(i0)
-    return  mat( (Fp - Fm) / (2*h) )[:] |> collect
+    at[l0] +=  h * evec(i)
+    return (Fp - Fm) / (2*h)
+    # return  mat( (Fp - Fm) / (2*h) )[:] |> collect
 end
