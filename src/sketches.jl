@@ -1,5 +1,12 @@
 # create the Dict for datas, but without any calculations
 
+
+# TODO: fix the following global variables
+index_rcut2_0 = [];
+index_rcut3_0 = [];
+index_rcut3_0F = [];
+
+
 # site energy data
 function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
 
@@ -36,13 +43,12 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     push!(data, dat);
 
     # 2. d2Es
-    index_rcut2_0 = [];
     for (n, neigs, R) in sites(nlist_d2)
         if n == l0
             global index_rcut2_0 = neigs;
         end
     end
-    index_rcut2_0 = unique(index_rcut2_0)
+    global index_rcut2_0 = unique(index_rcut2_0)
     N₂ = length(index_rcut2_0);
     # d2Esh = zeros(3, N₂, 3, length(atd));
     for i = 1 : 3, j = 1 : N₂
@@ -58,13 +64,12 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
     end
 
     # 3. d3Es
-    index_rcut3_0 = [];
     for (n, neigs, R) in sites(nlist_d3)
         if n == l0
             global index_rcut3_0 = neigs
         end
     end
-    index_rcut3_0 = unique(index_rcut3_0)
+    global index_rcut3_0 = unique(index_rcut3_0);
     N₃ = length(index_rcut3_0);
     # d3Esh = zeros(3, N₃, 3, )
     for i = 1 : 3, j = 1 : 3, s = 1 : N₃
@@ -75,8 +80,8 @@ function data_djEs_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1})
                 index_rcut3_ℓ = neigs;
             end
         end
-        index_rcut3_ℓ = unique(index_rcut3_ℓ)
-        N₃ℓ = length(index_rcut3_ℓ)
+        index_rcut3_ℓ = unique(index_rcut3_ℓ);
+        N₃ℓ = length(index_rcut3_ℓ);
         for t = 1 : N₃ℓ
             k = index_rcut3_ℓ[t];
             dat = Dict{String, Any}();
@@ -121,6 +126,8 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
     data = Dict[]
     D["data"] = data;
 
+    l0 = 1;
+
     # 1. F
     dat = Dict{String, Any}();
     dat["Info"] = "forces";
@@ -129,11 +136,10 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
 
     # 2. FC
     for i = 1 : 3
-        # store force-constants
         dat = Dict{String, Any}()
         dat["Info"] = "perturb the origin atom in direction i and store
                       dFh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
-        dat["l0"] = 1;
+        # dat["l0"] = 1;
         dat["i"] = i;
         dat["h"] = h;
         dat["datatype"] = "FC";
@@ -141,19 +147,27 @@ function data_djF_sketch(at::Atoms, h::Float64, cutoffs::Array{Float64,1};
     end
 
     # 3. d2F
-    # for i = 1 : 3, j = 1 : 3
-    #     # for k = 1 : length()
-    #     # store force-constants
-    #     dat = Dict{String, Any}()
-    #     dat["Info"] = "perturb the origin atom in direction i
-    #             perturb the k-th atom in direction j
-    #             and store d2Fh = 1/2h * ( F_{,n}(y+h*e₀) - F_{,n}(y-h*e₀) )"
-    #     dat["i0"] = 1;
-    #     dat["h"] = h;
-    #     dat["i"] = i;
-    #     dat["datatype"] = "d2F";
-    #     push!(data, dat);
-    # end
+    nlist_d3 = neighbourlist(at, 2.0 * rcut3);
+    for (n, neigs, R) in sites(nlist_d3)
+        if n == l0
+            global index_rcut3_0F = neigs
+        end
+    end
+    global index_rcut3_0F = unique(index_rcut3_0F);
+    N₃ = length(index_rcut3_0F);
+    for i = 1 : 3, j = 1 : 3, s = 1 : N₃
+        k = index_rcut3_0F[s];
+        dat = Dict{String, Any}();
+        dat["Info"] = "perturb the origin atom in direction i and store
+                d2Fh = 1/4h²⋅[ F(y+h⋅eⁱ_ℓ+h⋅eʲ_k) + F(y-h⋅eⁱ_ℓ-h⋅eʲ_k)
+                             - F(y+h⋅eⁱ_ℓ) - F(y+h⋅eʲ_k) ]";
+        dat["h"] = h;
+        dat["i_l0"] = i;
+        dat["i_k"] = j;
+        dat["k"] = k
+        dat["datatype"] = "d2Fh";
+        push!(data, dat);
+    end
 
     # # 4. random forces
     # for n = 1:nconfig_F

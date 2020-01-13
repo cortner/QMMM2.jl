@@ -97,7 +97,6 @@ end
 
 """
 l0 : site that we are perturbing
- l : site at which the site energy is evaluated
  i : direction of the perturbation (E1, E2, E3)
  h : finite-difference step
 """
@@ -113,6 +112,49 @@ function _forces_dh(basis, at::Atoms, l0::Integer, i::Integer, h::Real)
     set_positions!(at, X)
     return (FBp - FBm) / (2*h)
     # return  mat( (FBp - FBm) / (2*h) )[:] |> collect
+end
+
+"""
+l0    : first site that we are perturbing
+ k    : second site that we are perturbin
+ i_l0 : direction of the perturbation of l0
+ i_k  : direction of the perturbation of k
+ h    : finite-difference step
+"""
+function _forces_d2h(basis, at::Atoms, l0::Integer, k::Integer,
+                     i_l0::Integer, i_k::Integer, h::Real)
+   X = positions(at)
+   # -------------------------
+   X[l0] += h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   set_positions!(at, X)
+   dBpp = _forces(basis, at)
+   X[l0] -= h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   # -------------------------
+   X[l0] += h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   set_positions!(at, X)
+   dBpm = _forces(basis, at)
+   X[l0] -= h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   # -------------------------
+   X[l0] -= h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   set_positions!(at, X)
+   dBmp = _forces(basis, at)
+   X[l0] += h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   # -------------------------
+   X[l0] -= h * evec(i_l0)
+   X[k] -= h * evec(i_k)
+   set_positions!(at, X)
+   dBmm = _forces(basis, at)
+   X[l0] += h * evec(i_l0)
+   X[k] += h * evec(i_k)
+   # -------------------------
+   set_positions!(at, X)
+   return (dBpp - dBpm - dBmp + dBmm) / (2*h)^2
 end
 
 
@@ -199,6 +241,22 @@ function assemble_lsq(::Val{:FC}, basis, config, at, w, key)
    d2B = _forces_dh(basis, at, l0, i, h)
    @assert size(d2B) == (length(at), length(basis))
    return _asm_(FC, d2B, w, 1:length(at))
+end
+
+function assemble_lsq(::Val{:d2Fh}, basis, config, at, w, key)
+   # import data
+   d2F = config[key]
+   h = config["h"]
+   l0 = 1                   # first perturbed atom
+   i_l0 = config["i_l0"]    # the direction of the perturbation of l0 = 1
+   k = config["k"]          # second perturbed atom
+   i_k = config["i_k"]      # direction of perturbation of k
+   @assert length(d2F) == length(at)
+   # assemble basis
+   d3B = _forces_d2h(basis, at, l0, k, i_l0, i_k, h)
+   @assert size(d3B) == (length(at), length(basis))
+   # ------------------------
+   return _asm_(d2F, d3B, w, 1:length(at))
 end
 
 function assemble_lsq(::Val{:EF}, basis, config, at, w, key)
@@ -288,6 +346,7 @@ function _fitinfo(basis, D, weights, kwargs, A, Y, DT, c)
 end
 
 
+# TODO: extend to force data case ...
 function print_errors(fitinfo::Dict; fmt="%.3e")
    dts = ["Es", "dEs", "d2Esh", "d3Esh"]
    maxe = zeros(length(dts))

@@ -24,6 +24,7 @@ function get_basis(bo, deg; rinfact = 0.8, wL = 1.5, rcut = 6.0)
 end
 
 
+# TODO: generalize this to force datas
 function train_ship(train_database, bo, deg;
             wL = 1.5,
             rinfact = 0.8,

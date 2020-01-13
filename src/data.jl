@@ -129,7 +129,7 @@ function eval_dataset_tb!(::Val{:d3Esh}, data, calc, at; key="train")
     for i_l0 = 1:3, sig_l0 in [1,-1], i_k = 1:3, sig_k in [-1,1]
         println("perturb the ", l0, "-th atom in direction ", i_l0,
                 "with", sig_l0, "and perturb the ", k,
-                "-th atom in direction ", i_k, "with" sig_k)
+                "-th atom in direction ", i_k, "with", sig_k)
         X[i_l0,l0] += sig_l0 * h
         X[i_k,k] += sig_k * h
         atd = deepcopy(at)
@@ -179,6 +179,43 @@ function eval_dataset_tb!(::Val{:FC}, data, calc, at; key="train")
                 dat[key] += frc * sig / (2.0*h)
             end
         end
+    end
+end
+
+function eval_dataset_tb!(::Val{:d2Fh}, data, calc, at; key="train")
+    l0 = 1
+    X = positions(at) |> mat;
+    h = data[1]["h"]
+    # collect all the "k" indecies
+    Dks = [ dat["k"]  for dat in data ]
+    for k in unique(Dks)
+        Idk = findall(Dks .== k)
+        # d2Fh = 1/4h²⋅[ F(y+h⋅eⁱ_ℓ+h⋅eʲ_k) + F(y-h⋅eⁱ_ℓ-h⋅eʲ_k)
+        #              - F(y+h⋅eⁱ_ℓ) - F(y+h⋅eʲ_k) ]
+    for i_l0 = 1:3, sig_l0 in [1,-1], i_k = 1:3, sig_k in [-1,1]
+        println("perturb the ", l0, "-th atom in direction ", i_l0,
+                " with ", sig_l0, "and perturb the ", k,
+                "-th atom in direction ", i_k, " with ", sig_k)
+        X[i_l0,l0] += sig_l0 * h
+        X[i_k,k] += sig_k * h
+        atd = deepcopy(at)
+        set_positions!(atd, X)
+        X[i_l0,l0] -= sig_l0 * h
+        X[i_k,k] -= sig_k * h
+        # compute dEs on all neighbours as determined by data sketch
+        for dat in data[Idk]
+        if dat["i_l0"] == i_l0 && dat["i_k"] == i_k
+            @assert dat["h"] == h  # test all h are the same!
+            println("calculating forces ...")
+            frc = forces(calc, atd)
+            # write frc into the data point
+            if !haskey(dat, key)
+                dat[key] = zeros(size(frc))
+            end
+            dat[key] += frc * sig_l0*sig_k / (4.0*h^2)
+        end
+        end
+    end
     end
 end
 
